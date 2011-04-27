@@ -8,8 +8,9 @@ class ExtractTransformLoadController {
 	
 	def importData = {
 		
-		importContactService.processPhone()
-		
+		importContactService.processContact()
+
+		redirect(view:"/")
 	}
 	
 }

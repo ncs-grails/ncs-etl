@@ -89,5 +89,6 @@ log4j = {
     warn   'org.mortbay.log'
 }
 
+grails.views.javascript.library="jquery"
 
 //log4j.logger.org.springframework.security='off,stdout'

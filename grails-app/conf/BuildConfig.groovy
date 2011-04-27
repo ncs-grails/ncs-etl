@@ -34,5 +34,6 @@ grails.project.dependency.resolution = {
 		// }
 
         // runtime 'mysql:mysql-connector-java:5.1.5'
+		build 'org.codehaus.gpars:gpars:0.11'
     }
 }

@@ -227,7 +227,16 @@ class ImportContactService {
 						}
 						
 						// NORC SU_ID...
-						if (contactImportLinkInstance.personId && ! contactImportLinkInstance.norcSuId) {
+						if (contactImportInstance.sourceKeyId && ! contactImportLinkInstance.norcSuId) {
+							def norcSuId = null
+							if (contactImportInstance.sourceName == "hh_batch") {
+								norcSuId = contactImportInstance.sourceKeyId
+							}
+							
+							if (norcSuId.length() == 8 && norcSuId =~ /00$/) {
+								println "Household!"
+							}
+
 							contactImportLinkInstance.norcSuId = null
 						}
 						

@@ -2,17 +2,17 @@ package edu.umn.ncs.staging
 
 class ContactImportLink {
 	
-	Integer personId
-	Integer primaryPhoneId
-	Integer secondaryPhoneId
-	Integer homePhoneId
-	Integer workPhoneId
-	Integer cellPhoneId
-	Integer emailAddressId
-	Integer addressId
-	Integer dwellingUnitId
-	Integer appointmentId
-	Integer trackedItemId
+	Long personId
+	Long primaryPhoneId
+	Long secondaryPhoneId
+	Long homePhoneId
+	Long workPhoneId
+	Long cellPhoneId
+	Long emailAddressId
+	Long addressId
+	Long dwellingUnitId
+	Long appointmentId
+	Long trackedItemId
 	String norcSuId
 	
 	static belongsTo = [contactImport : ContactImport ]

@@ -18,7 +18,6 @@ class ContactImportZp4 {
 	static belongsTo = [contactImport : ContactImport ]
 	
     static constraints = {
-		contactImportId(nullable:true)
 		address1(maxSize: 40, nullable:true)
 		address2(maxSize: 40, nullable:true)
 		addressLeftOvers(nullable:true)

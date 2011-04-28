@@ -92,3 +92,6 @@ log4j = {
 grails.views.javascript.library="jquery"
 
 //log4j.logger.org.springframework.security='off,stdout'
+
+// Added by the Address Lookup ZP4 Plugin:
+grails.plugins.addressLookupZpfour.server = 'http://zp4.cccs.umn.edu/'

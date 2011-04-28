@@ -6,11 +6,16 @@ class ExtractTransformLoadController {
 	 
     def index = { }
 	
-	def importData = {
+	def processContact = {
 		
 		importContactService.processContact()
 
 		redirect(view:"/")
 	}
 	
+	def zp4StandardizeImportData = {
+		importContactService.zp4StandardizeImportData()
+		
+		redirect(view:"/")
+	}
 }

@@ -11,6 +11,7 @@ class ContactImport {
 	String birthDate
 	String sourceKeyId
 	String sourceName
+	Date sourceDate = new Date()
 	String address
 	String addressUnit
 	String address2
@@ -51,6 +52,7 @@ class ContactImport {
 		birthDate(nullable:true)
 		sourceKeyId(nullable:true)
 		sourceName(nullable:true)
+		sourceDate(nullable:true)
 		address(nullable:true)
 		addressUnit(nullable:true)
 		address2(nullable:true)

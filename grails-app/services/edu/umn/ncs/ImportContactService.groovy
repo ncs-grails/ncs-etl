@@ -370,6 +370,103 @@ class ImportContactService {
 			}
 		} else { println "makePersonAddress: Something is Missing!" }
 	}
+	
+	
+	def makeTrackedItem(personInstance, dwellingUnitInstance, instrumentInstance, instrumentDate) {
+		
+		// TODO: pull this from the contact_import table
+
+		// Phone (default)
+		def format = InstrumentFormat.read(3)
+		// Incoming
+		def direction = BatchDirection.read(2)
+		// Initial
+		def isInitial = IsInitial.read(1)
+		
+		Date lowDate = instrumentDate - 1
+		Date highDate = instrumentDate + 1
+		TrackedItem trackedItemInstance = null
+		Batch batchInstance = null
+		
+		TrackedItem.withTransaction {
+			
+			def trackedItemInstanceList = TrackedItem.createCriteria().list{
+				and {
+					batch {
+						and {
+							between("instrumentDate", lowDate, highDate)
+							instruments {
+								instrument {
+									idEq(instrumentInstance.id)
+								}
+							}
+						}
+					}
+					or {
+						dwellingUnit {
+							eq("id", dwellingUnitInstance?.id)
+						}
+						person {
+							eq("id", personInstance?.id)
+						}
+					}
+				}
+				maxResults(1)
+			}
+			// any matches?  first match gets returned
+			trackedItemInstanceList.each {
+				if ( ! trackedItemInstance ) {
+					trackedItemInstance = it
+					batchInstance = it.batch
+				}
+				// println "Found Tracked Item: ${trackedItemInstance.id}"
+			}
+	
+			def batchInstanceList = Batch.createCriteria().list{
+				and {
+					between("instrumentDate", lowDate, highDate)
+					instruments {
+						instrument {
+							idEq(instrumentInstance.id)
+						}
+					}
+				}
+				maxResults(1)
+			}
+			// any batches of this instrument type?
+			batchInstanceList.each {
+				if (! batchInstance ) { batchInstance = it }
+				// println "Found Batch: ${batchInstance.id}"
+			}
+	
+			if (! batchInstance ) {
+				// create a batch
+				batchInstance = new Batch(instrumentDate:instrumentDate,
+					trackingDocumentSent: false, format: format,
+					direction: direction, batchRunByWhat:'ncs-etl',
+					batchRunBy: 'norc')
+				// add batch instrument
+				batchInstance.addToInstruments(instrument: instrumentInstance,
+					isInitial: isInitial)
+
+				if ( ! batchInstance.save(flush:true) ) {
+					batchInstance.errors.each{
+						println "${it}"
+					}
+				}
+			}
+			
+			if ( ! trackedItemInstance ) {
+				// create a batch
+				trackedItemInstance = new TrackedItem(person:personInstance, dwellingUnit:dwellingUnitInstance, batch: batchInstance)
+				if ( ! trackedItemInstance.save(flush:true) ) {
+					println "Failed to create tracked item."
+				}
+			}
+			
+			return trackedItemInstance?.id
+		}
+	}
 
     def processContact() {
 		
@@ -544,7 +641,18 @@ class ImportContactService {
 								sourceNorc, contactImportInstance.sourceDate ?: now)
 						}
 
+						// TODO: Instruments
+						if (personInstance && contactImportInstance.instrumentId && ! contactImportLinkInstance.trackedItemId) {
+							def instrumentInstance = Instrument.read(contactImportInstance.instrumentId)
+							def dwellingUnitInstance = DwellingUnit.read(contactImportLinkInstance.dwellingUnitId)
+							def instrumentDate = contactImportInstance.instrumentDate ?: contactImportInstance.sourceDate ?: now
+							
+							contactImportLinkInstance.trackedItemId = makeTrackedItem(personInstance,
+								dwellingUnitInstance, instrumentInstance, instrumentDate)
+						}
+
 						// TODO: Appointments
+						
 					}
 					
 					if ( ! contactImportLinkInstance.save(flush:true)) {

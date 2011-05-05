@@ -11,8 +11,8 @@ class ImportContactService {
 
     static transactional = true
 	
-	def username = "ajz"	
-
+	def dataSource	
+	def username = "ajz"
 	def us = Country.findByAbbreviation("us")
 
 	private def makePhoneNumber(phoneNumber) {
@@ -70,8 +70,14 @@ class ImportContactService {
 			}
 		}
 		def zipCode = null
+		def zip4 = null
 		try {
 			zipCode = Integer.parseInt(addressInstance?.zipcode)
+		} catch (Exception ex) {
+			println "Invalid Zipcode: ${addressInstance?.zipcode}"
+		}
+		try {
+			zip4 = Integer.parseInt(addressInstance?.zip4)
 		} catch (Exception ex) {
 			println "Invalid Zipcode: ${addressInstance?.zipcode}"
 		}
@@ -95,7 +101,26 @@ class ImportContactService {
 				println "Found Address: ${streetAddressInstance.address}"
 				streetAddressId = streetAddressInstance.id
 			}
-			
+
+			if (zip4) {
+				streetAddressInstanceList = StreetAddress.createCriteria().list{
+					and {
+						eq("address", address)
+						eq("zipCode", zipCode)
+						eq("zip4", zip4)
+						country{
+							idEq(us.id)
+						}
+					}
+					cache(false)
+				}
+				
+				streetAddressInstanceList.each { streetAddressInstance ->
+					println "Found Address: ${streetAddressInstance.address}"
+					streetAddressId = streetAddressInstance.id
+				}
+			}
+
 			// Try again for oddly named apartments
 			if (! streetAddressId ) {
 				address = address.replace(' Unit ', ' # ')
@@ -117,11 +142,37 @@ class ImportContactService {
 				}
 			}
 			
+			if (streetAddressId && addressInstance.city && addressInstance.class.toString() == "edu.umn.ncs.staging.ContactImportZp4") {
+				def streetAddressInstance = StreetAddress.get(streetAddressId)
+				streetAddressInstance.city = addressInstance.city
+				streetAddressInstance.save(flush:true)
+			}
+			
 			
 			if (! streetAddressId) {
-				println "Could not find StreetAddress for ${addressInstance.class}: ${addressInstance.id}"
+				
+				def className = addressInstance.class.toString()
+
+								// We make one?
+				println "Could not find StreetAddress for ${className}: ${addressInstance.id}"
 				println "\t${address}"
-				println "\t${addressInstance.city}, ${addressInstance.state} ${zipCode}"
+				println "\t${addressInstance.city}, ${addressInstance.state} ${zipCode}-${zip4}"
+				
+				
+				if (className == "class edu.umn.ncs.staging.ContactImportZp4") {
+					println "Creating new address..."
+					def streetAddressInstance = new StreetAddress(address:address,
+						address2:addressInstance.address2, city:addressInstance.city, 
+						state: addressInstance.state, zipcode: zipCode, zip4: zip4,
+						country: us, standardized: true, userCreated: 'norc',
+						appCreated: 'ncs-etl')
+
+					if ( ! streetAddressInstance.save(flush:true) ) {
+						println "Failed to save new Address!"
+					} else {
+						streetAddressId = streetAddressInstance.id
+					}
+				}
 			}
 			
 		}
@@ -138,12 +189,15 @@ class ImportContactService {
 	
 				def dwellingUnitInstance = DwellingUnit.findByAddress(streetAddress)
 				if (! dwellingUnitInstance) {
-					dwellingUnitInstance = new EmailAddress(address: streetAddress)
+					dwellingUnitInstance = new DwellingUnit(address: streetAddress)
 					dwellingUnitInstance.userCreated = username
 					dwellingUnitInstance.appCreated = 'ncs_etl'
 					
 					if ( ! dwellingUnitInstance.save(flush:true) ) {
 						println "failed to save dwelling unit : ${streetAddress}"
+						dwellingUnitInstance.errors.each{
+							println "${it}"
+						}
 					}
 				}
 				dwellingUnitId = dwellingUnitInstance?.id
@@ -156,6 +210,8 @@ class ImportContactService {
 		
 		def personInstance = null
 		def personInstanceId = null
+		
+		def dateFormat = "yyyy-MM-dd"
 		
 		Person.withTransaction{
 		
@@ -171,7 +227,10 @@ class ImportContactService {
 				gender = female
 			}
 			
-			def dob = contactImportInstance.birthDate
+			Date dob = null
+			if (contactImportInstance.birthDate && contactImportInstance.birthDate != '--') {
+				dob = Date.parse(dateFormat, contactImportInstance.birthDate)
+			}
 			
 			def title = contactImportInstance.title?.toLowerCase()?.capitalize()
 			def firstName = contactImportInstance.firstName?.toLowerCase()?.capitalize()
@@ -298,9 +357,23 @@ class ImportContactService {
 			} else {
 				println "found person!"
 			}
+	
+			if (personInstance && ( norcSuId =~ /0[1-9]$/ )) {
+				println "NORC SU_ID: ${norcSuId}"
+				def personLinkInstance = PersonLink.findByNorcSuId(norcSuId)
+				if (! personLinkInstance) {
+					personLinkInstance = new PersonLink(norcSuId: norcSuId, person:personInstance)
+					//personLinkInstance.save(flush:true)
+				} else if ( ! personLinkInstance.norcSuId) {
+					personLinkInstance.norcSuId = norcSuId
+					//personLinkInstance.save(flush:true)
+				}
+			}
 		}
 		
-		if (personInstance?.id) { personInstanceId = personInstance.id }
+		if (personInstance?.id) {
+			personInstanceId = personInstance.id
+		}
 		return personInstanceId
 	}
 	
@@ -547,7 +620,7 @@ class ImportContactService {
 							}
 							def norcDwellingLink = null
 							
-							if (norcSuId.length() == 10) {
+							if (norcSuId && norcSuId.length() == 10) {
 								if (norcSuId =~ /00$/) {
 									norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
 								} else {
@@ -652,7 +725,7 @@ class ImportContactService {
 						}
 
 						// TODO: Appointments
-						
+												
 					}
 					
 					if ( ! contactImportLinkInstance.save(flush:true)) {
@@ -661,6 +734,20 @@ class ImportContactService {
 				}
 			}
 		}
+
+				// Person NORC_SUID Link
+		def query = """INSERT INTO person_link
+				(version, norc_su_id, person_id)
+			SELECT 0, ci.source_key_id, cil.person_id
+			FROM contact_import ci INNER JOIN
+				contact_import_link cil ON ci.id = cil.contact_import_id LEFT OUTER JOIN
+				ncs_test.person_link pl ON cil.person_id = pl.person_id
+			WHERE (cil.person_id IS NOT NULL)
+				AND (ci.source_key_id NOT LIKE '%00')
+				AND (pl.id IS NULL);"""
+		def sql = new Sql(dataSource) 
+		sql.execute(query)
+
 		// Pull Records, Create Phones,
 		println "Finished Importing."
     }

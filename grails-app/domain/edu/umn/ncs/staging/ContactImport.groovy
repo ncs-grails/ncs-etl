@@ -32,7 +32,9 @@ class ContactImport {
 	Date instrumentDate
 	Integer instrumentId
 	
-	static transients = [ 'address1' ]
+	static transients = [ 'address1', 'zipcode' ]
+	
+	String getZipcode() { zipCode }
 	
 	String getAddress1() {
 		if (addressUnit) {

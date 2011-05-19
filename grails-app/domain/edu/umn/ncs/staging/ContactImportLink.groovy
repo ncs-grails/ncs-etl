@@ -11,6 +11,7 @@ class ContactImportLink {
 	Long emailAddressId
 	Long addressId
 	Long dwellingUnitId
+	Long householdId
 	Long appointmentId
 	Long trackedItemId
 	String norcSuId
@@ -27,6 +28,7 @@ class ContactImportLink {
 		cellPhoneId(nullable:true)
 		emailAddressId(nullable:true)
 		dwellingUnitId(nullable:true)
+		householdId(nullable:true)
 		appointmentId(nullable:true)
 		trackedItemId(nullable:true)
 		norcSuId(nullable:true)

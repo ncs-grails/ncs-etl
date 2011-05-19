@@ -540,6 +540,57 @@ class ImportContactService {
 			return trackedItemInstance?.id
 		}
 	}
+	
+	
+	def makeHousehold(personInstance, dwellingUnitInstance) {
+		def householdId = null
+		def now = new Date()
+		
+		TrackedItem.withTransaction {
+		
+			if (personInstance?.id && dwellingUnitInstance?.id) {
+				// find by person and dwellingUnit
+				def c = Household.createCriteria()
+				def householdInstanceList = c.list{
+					and {
+						people {
+							eq('id', personInstance.id)
+						}
+						dwelling {
+							eq('id', dwellingUnitInstance.id)
+						}
+					}
+				}
+				
+				householdInstanceList.each{ hh ->
+					householdId = hh.id
+				}
+				
+				// if not, then new Household
+				if ( ! householdId ) {
+					
+					def householdInstance = Household.findByDwelling(dwellingUnitInstance)
+					if ( ! householdInstance ) {
+						householdInstance = new Household(dwelling:dwellingUnitInstance)
+						householdInstance.appCreated = 'ncs-etl'
+					} else {
+						householdInstance.userUpdated = 'ncs-etl'
+						householdInstance.lastUpdated = now
+					}
+					
+					householdInstance.addToPeople(personInstance)
+					
+					if ( householdInstance.save(flush:true) ) {
+						householdId = householdInstance.id
+					} else {
+						println "Failed to save household."
+					}
+				}
+			}
+		}
+		
+		return householdId
+	}
 
     def processContact() {
 		
@@ -639,9 +690,12 @@ class ImportContactService {
 							}
 						}
 
+						def dwellingUnitInstance = DwellingUnit.read(contactImportLinkInstance.dwellingUnitId)
+						
 						// Dwelling Unit...
-						if (contactImportLinkInstance.addressId && ! contactImportLinkInstance.dwellingUnitId) {
+						if (contactImportLinkInstance.addressId && ! dwellingUnitInstance) {
 							contactImportLinkInstance.dwellingUnitId = makeDwellingUnit(contactImportLinkInstance.addressId)
+							dwellingUnitInstance = DwellingUnit.read(contactImportLinkInstance.dwellingUnitId)
 						}
 
 						// Person...
@@ -714,14 +768,21 @@ class ImportContactService {
 								sourceNorc, contactImportInstance.sourceDate ?: now)
 						}
 
-						// TODO: Instruments
-						if (personInstance && contactImportInstance.instrumentId && ! contactImportLinkInstance.trackedItemId) {
+						// Instruments
+						if ( ( personInstance || dwellingUnitInstance) && contactImportInstance.instrumentId && ! contactImportLinkInstance.trackedItemId) {
 							def instrumentInstance = Instrument.read(contactImportInstance.instrumentId)
-							def dwellingUnitInstance = DwellingUnit.read(contactImportLinkInstance.dwellingUnitId)
 							def instrumentDate = contactImportInstance.instrumentDate ?: contactImportInstance.sourceDate ?: now
 							
 							contactImportLinkInstance.trackedItemId = makeTrackedItem(personInstance,
 								dwellingUnitInstance, instrumentInstance, instrumentDate)
+						}
+						
+						// Household
+						if (personInstance && dwellingUnitInstance) {
+							def householdInstance = Household.read(contactImportLinkInstance.householdId)
+							if ( ! householdInstance ) {
+								contactImportLinkInstance.householdId = makeHousehold(personInstance, dwellingUnitInstance)
+							}
 						}
 
 						// TODO: Appointments
@@ -741,7 +802,7 @@ class ImportContactService {
 			SELECT 0, ci.source_key_id, cil.person_id
 			FROM contact_import ci INNER JOIN
 				contact_import_link cil ON ci.id = cil.contact_import_id LEFT OUTER JOIN
-				ncs_test.person_link pl ON cil.person_id = pl.person_id
+				person_link pl ON cil.person_id = pl.person_id
 			WHERE (cil.person_id IS NOT NULL)
 				AND (ci.source_key_id NOT LIKE '%00')
 				AND (pl.id IS NULL);"""

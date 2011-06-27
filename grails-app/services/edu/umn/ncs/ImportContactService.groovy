@@ -98,7 +98,7 @@ class ImportContactService {
 			}
 			
 			streetAddressInstanceList.each { streetAddressInstance ->
-				println "Found Address: ${streetAddressInstance.address}"
+				println "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
 				streetAddressId = streetAddressInstance.id
 			}
 
@@ -116,7 +116,7 @@ class ImportContactService {
 				}
 				
 				streetAddressInstanceList.each { streetAddressInstance ->
-					println "Found Address: ${streetAddressInstance.address}"
+					println "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
 					streetAddressId = streetAddressInstance.id
 				}
 			}
@@ -229,7 +229,11 @@ class ImportContactService {
 			
 			Date dob = null
 			if (contactImportInstance.birthDate && contactImportInstance.birthDate != '--') {
-				dob = Date.parse(dateFormat, contactImportInstance.birthDate)
+				try {
+					dob = Date.parse(dateFormat, contactImportInstance.birthDate)
+				} catch (Exception ex) {
+					println "unable to parse birthdate: ${contactImportInstance.birthDate}"
+				}
 			}
 			
 			def title = contactImportInstance.title?.toLowerCase()?.capitalize()

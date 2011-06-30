@@ -11,8 +11,9 @@ class ImportContactService {
 
     static transactional = true
 	
-	def dataSource	
-	def username = "ajz"
+	def dataSource
+	def authenticateService
+	private def username = authenticateService?.principal()?.getUsername()
 	def us = Country.findByAbbreviation("us")
 
 	private def makePhoneNumber(phoneNumber) {
@@ -454,11 +455,11 @@ class ImportContactService {
 		// TODO: pull this from the contact_import table
 
 		// Phone (default)
-		def format = InstrumentFormat.read(3)
+		def instrumentFormatInstance = InstrumentFormat.read(3)
 		// Incoming
-		def direction = BatchDirection.read(2)
+		def batchDirectionInstance = BatchDirection.read(2)
 		// Initial
-		def isInitial = IsInitial.read(1)
+		def isInitialInstance = IsInitial.read(1)
 		
 		Date lowDate = instrumentDate - 1
 		Date highDate = instrumentDate + 1
@@ -473,9 +474,20 @@ class ImportContactService {
 						and {
 							between("instrumentDate", lowDate, highDate)
 							instruments {
-								instrument {
-									idEq(instrumentInstance.id)
+								and {
+									instrument {
+										idEq(instrumentInstance.id)
+									}
+									isInitial {
+										idEq(isInitialInstance.id)
+									}
 								}
+							}
+							direction {
+								idEq(batchDirectionInstance.id)
+							}
+							format {
+								idEq(instrumentFormatInstance.id)
 							}
 						}
 					}
@@ -519,12 +531,12 @@ class ImportContactService {
 			if (! batchInstance ) {
 				// create a batch
 				batchInstance = new Batch(instrumentDate:instrumentDate,
-					trackingDocumentSent: false, format: format,
-					direction: direction, batchRunByWhat:'ncs-etl',
+					trackingDocumentSent: false, format: instrumentFormatInstance,
+					direction: batchDirectionInstance, batchRunByWhat:'ncs-etl',
 					batchRunBy: 'norc')
 				// add batch instrument
 				batchInstance.addToInstruments(instrument: instrumentInstance,
-					isInitial: isInitial)
+					isInitial: isInitialInstance)
 
 				if ( ! batchInstance.save(flush:true) ) {
 					batchInstance.errors.each{
@@ -790,7 +802,6 @@ class ImportContactService {
 						}
 
 						// TODO: Appointments
-												
 					}
 					
 					if ( ! contactImportLinkInstance.save(flush:true)) {

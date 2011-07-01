@@ -31,6 +31,8 @@ class ContactImport {
 	String emailAddress
 	Date instrumentDate
 	Integer instrumentId
+	Integer batchDirectionId
+	Integer instrumentTypeId
 	
 	static transients = [ 'address1', 'zipcode' ]
 	
@@ -74,5 +76,8 @@ class ContactImport {
 		emailAddress(nullable:true)
 		instrumentDate(nullable:true)
 		instrumentId(nullable:true)
+		batchDirectionId(nullable:true)
+		instrumentTypeId(nullable:true)
+	
     }
 }

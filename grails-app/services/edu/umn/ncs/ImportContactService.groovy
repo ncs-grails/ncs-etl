@@ -13,14 +13,14 @@ class ImportContactService {
 	
 	def dataSource
 	def authenticateService
-	private def username = authenticateService?.principal()?.getUsername()
+	private def username = null
 	def us = Country.findByAbbreviation("us")
 
 	private def makePhoneNumber(phoneNumber) {
 		def phoneInstanceId = null
 		
 		PhoneNumber.withTransaction{
-			def phone = phoneNumber.replaceAll('[a-zA-Z-.]', '')
+			def phone = phoneNumber.replaceAll('[a-zA-Z-.]', '').trim()
 			if (phone[0] == '1' && phone.length() == 11) {
 				phone = phone - '1'
 			}
@@ -32,7 +32,10 @@ class ImportContactService {
 				phoneInstance.appCreated = 'ncs_etl'
 				
 				if ( ! phoneInstance.save(flush:true) ) {
-					println "failed to save phone number: ${phone}"
+					println "failed to save phone number: '${phone}'"
+					phoneInstance.errors.each{
+						println "\t${it}"
+					}
 				}
 			}
 			phoneInstanceId = phoneInstance?.id
@@ -41,7 +44,7 @@ class ImportContactService {
 	}
 	
 	private def makeEmailAddress(contactImportInstance) {
-		def emailAddress = contactImportInstance.emailAddress
+		def emailAddress = contactImportInstance.emailAddress.toLowerCase().trim()
 		def emailInstanceId = null
 		
 		EmailAddress.withTransaction{
@@ -53,7 +56,10 @@ class ImportContactService {
 				emailInstance.appCreated = 'ncs_etl'
 				
 				if ( ! emailInstance.save(flush:true) ) {
-					println "failed to save email : ${emailAddress}"
+					println "failed to save email : '${emailAddress}'"
+					emailInstance.errors.each{
+						println "\t${it}"
+					}
 				}
 			}
 			emailInstanceId = emailInstance?.id
@@ -367,9 +373,11 @@ class ImportContactService {
 				println "NORC SU_ID: ${norcSuId}"
 				def personLinkInstance = PersonLink.findByNorcSuId(norcSuId)
 				if (! personLinkInstance) {
+					println "Creating: new PersonLink"
 					personLinkInstance = new PersonLink(norcSuId: norcSuId, person:personInstance)
 					//personLinkInstance.save(flush:true)
 				} else if ( ! personLinkInstance.norcSuId) {
+					println "Updating: PersonLink"
 					personLinkInstance.norcSuId = norcSuId
 					//personLinkInstance.save(flush:true)
 				}
@@ -450,14 +458,8 @@ class ImportContactService {
 	}
 	
 	
-	def makeTrackedItem(personInstance, dwellingUnitInstance, instrumentInstance, instrumentDate) {
+	def makeTrackedItem(personInstance, dwellingUnitInstance, instrumentInstance, instrumentFormatInstance, batchDirectionInstance, instrumentDate) {
 		
-		// TODO: pull this from the contact_import table
-
-		// Phone (default)
-		def instrumentFormatInstance = InstrumentFormat.read(3)
-		// Incoming
-		def batchDirectionInstance = BatchDirection.read(2)
 		// Initial
 		def isInitialInstance = IsInitial.read(1)
 		
@@ -465,6 +467,9 @@ class ImportContactService {
 		Date highDate = instrumentDate + 1
 		TrackedItem trackedItemInstance = null
 		Batch batchInstance = null
+		
+		
+		// println "Looking for Tracked Item with Batch Date: ${instrumentDate}, and Instrument Type: ${instrumentInstance.name}"
 		
 		TrackedItem.withTransaction {
 			
@@ -502,30 +507,33 @@ class ImportContactService {
 				}
 				maxResults(1)
 			}
+			
 			// any matches?  first match gets returned
 			trackedItemInstanceList.each {
 				if ( ! trackedItemInstance ) {
 					trackedItemInstance = it
 					batchInstance = it.batch
 				}
-				// println "Found Tracked Item: ${trackedItemInstance.id}"
+				println "Found Tracked Item: ${trackedItemInstance.id}"
 			}
 	
-			def batchInstanceList = Batch.createCriteria().list{
-				and {
-					between("instrumentDate", lowDate, highDate)
-					instruments {
-						instrument {
-							idEq(instrumentInstance.id)
+			if ( ! batchInstance ) {
+				def batchInstanceList = Batch.createCriteria().list{
+					and {
+						between("instrumentDate", lowDate, highDate)
+						instruments {
+							instrument {
+								idEq(instrumentInstance.id)
+							}
 						}
 					}
+					maxResults(1)
 				}
-				maxResults(1)
-			}
-			// any batches of this instrument type?
-			batchInstanceList.each {
-				if (! batchInstance ) { batchInstance = it }
-				// println "Found Batch: ${batchInstance.id}"
+				// any batches of this instrument type?
+				batchInstanceList.each {
+					if (! batchInstance ) { batchInstance = it }
+					println "Found Batch: ${batchInstance.id}"
+				}
 			}
 	
 			if (! batchInstance ) {
@@ -611,7 +619,8 @@ class ImportContactService {
     def processContact() {
 		
 		def now = new Date()
-
+		username = authenticateService?.principal()?.getUsername()
+		
 		def sourceNorc = Source.findByName("Name")
 		
 		if ( ! sourceNorc )  {
@@ -643,17 +652,17 @@ class ImportContactService {
 								! contactImportLinkInstance.secondaryPhoneId) {
 							contactImportLinkInstance.secondaryPhoneId = makePhoneNumber(contactImportInstance.secondaryPhone)
 						}
-						// Primary Phone Number...
+						// Home Phone Number...
 						if (contactImportInstance.homePhone && 
 								! contactImportLinkInstance.homePhoneId) {
 							contactImportLinkInstance.homePhoneId = makePhoneNumber(contactImportInstance.homePhone)
 						}
-						// Primary Phone Number...
+						// Work Phone Number...
 						if (contactImportInstance.workPhone && 
 								! contactImportLinkInstance.workPhoneId) {
 							contactImportLinkInstance.workPhoneId = makePhoneNumber(contactImportInstance.workPhone)
 						}
-						// Primary Phone Number...
+						// Cell Phone Number...
 						if (contactImportInstance.cellPhone && 
 								! contactImportLinkInstance.cellPhoneId) {
 							contactImportLinkInstance.cellPhoneId = makePhoneNumber(contactImportInstance.cellPhone)
@@ -678,31 +687,63 @@ class ImportContactService {
 								contactImportLinkInstance.addressId = makeStreetAddress(contactImportInstance)
 							}
 						}
-						
+									
 						// NORC SU_ID...
 						if (contactImportInstance.sourceKeyId && ! contactImportLinkInstance.norcSuId) {
 							def norcSuId = null
-							if (contactImportInstance.sourceName == "hh_batch") {
+							
+							if (contactImportInstance.sourceName =~ /batch$/) {
+								println "NORC Batch"
 								norcSuId = "00${contactImportInstance.sourceKeyId}"
+							} else {
+								println "NOT NORC Batch: ${contactImportInstance.sourceName}"
 							}
-							def norcDwellingLink = null
 							
 							if (norcSuId && norcSuId.length() == 10) {
 								if (norcSuId =~ /00$/) {
-									norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
-								} else {
-									norcDwellingLink = DwellingUnitLink.findByNorcSuId("${norcSuId[0..7]}00")
-								}
-								// Lookup dwelling unit info...
-								norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
-								if (norcDwellingLink) {
-									contactImportLinkInstance.norcSuId = norcDwellingLink.norcSuId
-									if ( ! contactImportLinkInstance.dwellingUnitId ) {
-										contactImportLinkInstance.dwellingUnitId = norcDwellingLink.dwellingUnit.id
+									// Lookup dwelling unit info...
+									def norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
+									if (norcDwellingLink) {
+										contactImportLinkInstance.norcSuId = norcDwellingLink.norcSuId
+										if ( ! contactImportLinkInstance.dwellingUnitId ) {
+											contactImportLinkInstance.dwellingUnitId = norcDwellingLink.dwellingUnit.id
+										}
+									} else {
+										println "Unable to find NORC SU_ID for DwellingUnit: ${norcSuId}!"
 									}
 								} else {
-									println "Unable to find NORC SU_ID for DwellingUnit!"
+									// Lookup person info...
+									norcSuId = norcSuId[2..9]
+								
+									def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
+									if (norcPersonLink) {
+										contactImportLinkInstance.norcSuId = norcPersonLink.norcSuId
+										if ( ! contactImportLinkInstance.personId ) {
+											contactImportLinkInstance.personId = norcPersonLink.person.id
+										} else if (contactImportLinkInstance.personId != norcPersonLink.person.id ) {
+											println "Person: ${contactImportLinkInstance.personId} should be: ${norcPersonLink.person.id}!"
+										}
+									} else {
+										println "Unable to find NORC SU_ID for Person: ${norcSuId}!"
+									}
 								}
+							}
+						}
+						
+						if (contactImportLinkInstance.norcSuId =~ /0[1-9]$/ && ! contactImportLinkInstance.personId) {
+							def norcSuId = contactImportLinkInstance.norcSuId
+							println "Looking up Person by NORC SUID"
+							def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
+							if (norcPersonLink) {
+								contactImportLinkInstance.personId = norcPersonLink.person.id
+							}
+						}
+
+						if (contactImportLinkInstance.norcSuId =~ /00$/ && ! contactImportLinkInstance.dwellingUnitId) {
+							def norcSuId = contactImportLinkInstance.norcSuId
+							def norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
+							if (norcDwellingLink) {
+								contactImportLinkInstance.dwellingUnitId = norcDwellingLink.dwellingUnit.id
 							}
 						}
 
@@ -784,13 +825,25 @@ class ImportContactService {
 								sourceNorc, contactImportInstance.sourceDate ?: now)
 						}
 
+						
+						Integer batchDirectionId
+						Integer instrumentTypeId
+				
 						// Instruments
 						if ( ( personInstance || dwellingUnitInstance) && contactImportInstance.instrumentId && ! contactImportLinkInstance.trackedItemId) {
 							def instrumentInstance = Instrument.read(contactImportInstance.instrumentId)
 							def instrumentDate = contactImportInstance.instrumentDate ?: contactImportInstance.sourceDate ?: now
 							
-							contactImportLinkInstance.trackedItemId = makeTrackedItem(personInstance,
-								dwellingUnitInstance, instrumentInstance, instrumentDate)
+							
+							// Phone (default as this is what NORC usually does)
+							def instrumentFormatInstance = InstrumentFormat.read(contactImportInstance.instrumentTypeId ?: 3)
+							// Incoming (default)
+							def batchDirectionInstance = BatchDirection.read(contactImportInstance.batchDirectionId ?: 2)
+							
+							contactImportLinkInstance.trackedItemId = makeTrackedItem(personInstance, 
+								dwellingUnitInstance, instrumentInstance, instrumentFormatInstance, 
+								batchDirectionInstance, instrumentDate)
+							
 						}
 						
 						// Household
@@ -814,10 +867,11 @@ class ImportContactService {
 				// Person NORC_SUID Link
 		def query = """INSERT INTO person_link
 				(version, norc_su_id, person_id)
-			SELECT 0, ci.source_key_id, cil.person_id
+			SELECT 0, ci.source_key_id, p.id
 			FROM contact_import ci INNER JOIN
-				contact_import_link cil ON ci.id = cil.contact_import_id LEFT OUTER JOIN
-				person_link pl ON cil.person_id = pl.person_id
+				contact_import_link cil ON ci.id = cil.contact_import_id INNER JOIN
+				person p ON p.id = cil.person_id LEFT OUTER JOIN
+				person_link pl ON p.id = pl.person_id
 			WHERE (cil.person_id IS NOT NULL)
 				AND (ci.source_key_id NOT LIKE '%00')
 				AND (pl.id IS NULL);"""

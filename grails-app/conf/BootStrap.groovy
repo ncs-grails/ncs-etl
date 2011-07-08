@@ -42,14 +42,9 @@ class BootStrap {
 				}
 			}
 			return contactImportZp4Instance
-		}
-		
-		environments {
-			development {
-				// this makes development a tad bit easier.
-				def env = System.getenv()
-				println "\nBrowse to https://${env['USERNAME']}.healthstudies.umn.edu:8443/ncs-etl/\n"
-			}
+			
+			def env = System.getenv()
+			println "\nBrowse to https://${env['USERNAME']}.healthstudies.umn.edu:8443/ncs-etl/\n"
 		}
 
     }

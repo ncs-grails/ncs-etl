@@ -473,39 +473,69 @@ class ImportContactService {
 		
 		TrackedItem.withTransaction {
 			
-			def trackedItemInstanceList = TrackedItem.createCriteria().list{
-				and {
-					batch {
-						and {
-							between("instrumentDate", lowDate, highDate)
-							instruments {
-								and {
-									instrument {
-										idEq(instrumentInstance.id)
-									}
-									isInitial {
-										idEq(isInitialInstance.id)
+			def trackedItemInstanceList = []
+			
+			if (personInstance) {
+				// If there's a person, look it up by the person
+				trackedItemInstanceList = TrackedItem.createCriteria().list{
+					and {
+						batch {
+							and {
+								between("instrumentDate", lowDate, highDate)
+								instruments {
+									and {
+										instrument {
+											idEq(instrumentInstance.id)
+										}
+										isInitial {
+											idEq(isInitialInstance.id)
+										}
 									}
 								}
+								direction {
+									idEq(batchDirectionInstance.id)
+								}
+								format {
+									idEq(instrumentFormatInstance.id)
+								}
 							}
-							direction {
-								idEq(batchDirectionInstance.id)
-							}
-							format {
-								idEq(instrumentFormatInstance.id)
-							}
-						}
-					}
-					or {
-						dwellingUnit {
-							eq("id", dwellingUnitInstance?.id)
 						}
 						person {
 							eq("id", personInstance?.id)
 						}
 					}
+					maxResults(1)
 				}
-				maxResults(1)
+			} else if (dwellingUnitInstance) {
+				trackedItemInstanceList = TrackedItem.createCriteria().list{
+					and {
+						batch {
+							and {
+								between("instrumentDate", lowDate, highDate)
+								instruments {
+									and {
+										instrument {
+											idEq(instrumentInstance.id)
+										}
+										isInitial {
+											idEq(isInitialInstance.id)
+										}
+									}
+								}
+								direction {
+									idEq(batchDirectionInstance.id)
+								}
+								format {
+									idEq(instrumentFormatInstance.id)
+								}
+							}
+						}
+						dwellingUnit {
+							eq("id", dwellingUnitInstance?.id)
+						}
+					}
+					maxResults(1)
+				}
 			}
 			
 			// any matches?  first match gets returned
@@ -525,6 +555,12 @@ class ImportContactService {
 							instrument {
 								idEq(instrumentInstance.id)
 							}
+						}
+						direction {
+							idEq(batchDirectionInstance.id)
+						}
+						format {
+							idEq(instrumentFormatInstance.id)
 						}
 					}
 					maxResults(1)
@@ -826,14 +862,10 @@ class ImportContactService {
 						}
 
 						
-						Integer batchDirectionId
-						Integer instrumentTypeId
-				
 						// Instruments
 						if ( ( personInstance || dwellingUnitInstance) && contactImportInstance.instrumentId && ! contactImportLinkInstance.trackedItemId) {
 							def instrumentInstance = Instrument.read(contactImportInstance.instrumentId)
 							def instrumentDate = contactImportInstance.instrumentDate ?: contactImportInstance.sourceDate ?: now
-							
 							
 							// Phone (default as this is what NORC usually does)
 							def instrumentFormatInstance = InstrumentFormat.read(contactImportInstance.instrumentTypeId ?: 3)

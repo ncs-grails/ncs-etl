@@ -261,6 +261,8 @@ class ImportContactService {
 					if ( ! contactImportLinkInstance.personId ) {
 						contactImportLinkInstance.personId = norcPersonLink.person.id
 					}
+					// Save the person instance to the local version
+					personInstance = Person.read(norcPersonLink.person.id)
 				}
 				
 				// Household Match
@@ -731,6 +733,7 @@ class ImportContactService {
 							if (contactImportInstance.sourceName =~ /batch$/) {
 								println "NORC Batch"
 								norcSuId = "00${contactImportInstance.sourceKeyId}"
+								contactImportLinkInstance.norcSuId = norcSuId
 							} else {
 								println "NOT NORC Batch: ${contactImportInstance.sourceName}"
 							}
@@ -768,7 +771,7 @@ class ImportContactService {
 						
 						if (contactImportLinkInstance.norcSuId =~ /0[1-9]$/ && ! contactImportLinkInstance.personId) {
 							def norcSuId = contactImportLinkInstance.norcSuId
-							println "Looking up Person by NORC SUID"
+							println "Looking up Person by NORC SUID (10 digit)"
 							def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
 							if (norcPersonLink) {
 								contactImportLinkInstance.personId = norcPersonLink.person.id

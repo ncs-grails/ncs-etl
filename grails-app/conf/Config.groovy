@@ -95,3 +95,4 @@ grails.views.javascript.library="jquery"
 
 // Added by the Address Lookup ZP4 Plugin:
 grails.plugins.addressLookupZpfour.server = 'http://zp4.cccs.umn.edu/'
+

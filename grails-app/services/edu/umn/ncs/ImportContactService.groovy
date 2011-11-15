@@ -5,11 +5,12 @@ import org.codehaus.groovy.grails.commons.ConfigurationHolder
 import edu.umn.ncs.staging.ContactImport
 import edu.umn.ncs.staging.ContactImportLink
 import edu.umn.ncs.staging.ContactImportZp4
-import com.semaphorecorp.zp4.Zp4Address
 
 class ImportContactService {
 
     static transactional = true
+
+	static appCreated = 'ncs-etl'
 	
 	def dataSource
 	def authenticateService
@@ -29,7 +30,7 @@ class ImportContactService {
 			if (! phoneInstance) {
 				phoneInstance = new PhoneNumber(phoneNumber: phone)
 				phoneInstance.userCreated = username
-				phoneInstance.appCreated = 'ncs_etl'
+				phoneInstance.appCreated = appCreated
 				
 				if ( ! phoneInstance.save(flush:true) ) {
 					println "failed to save phone number: '${phone}'"
@@ -53,9 +54,11 @@ class ImportContactService {
 			if (! emailInstance) {
 				emailInstance = new EmailAddress(emailAddress: emailAddress)
 				emailInstance.userCreated = username
-				emailInstance.appCreated = 'ncs_etl'
+				emailInstance.appCreated = appCreated
 				
-				if ( ! emailInstance.save(flush:true) ) {
+				if ( ! emailInstance.validate() ) {
+					println "INVALID Email Address: ${emailAddress}"
+				} else if ( ! emailInstance.save(flush:true) ) {
 					println "failed to save email : '${emailAddress}'"
 					emailInstance.errors.each{
 						println "\t${it}"
@@ -91,25 +94,29 @@ class ImportContactService {
 
 		StreetAddress.withTransaction{
 			
-			def streetAddressInstanceList = StreetAddress.createCriteria().list{
-				and {
-					eq("address", address)
-					eq("city", addressInstance.city)
-					eq("state", addressInstance.state)
-					eq("zipCode", zipCode)
-					country{
-						idEq(us.id)
+			def streetAddressInstanceList = []
+
+			if ( ! streetAddressId && ! zip4) {
+				streetAddressInstanceList = StreetAddress.createCriteria().list{
+					and {
+						eq("address", address)
+						eq("city", addressInstance.city)
+						eq("state", addressInstance.state)
+						eq("zipCode", zipCode)
+						country{
+							idEq(us.id)
+						}
 					}
+					cache(false)
 				}
-				cache(false)
-			}
-			
-			streetAddressInstanceList.each { streetAddressInstance ->
-				println "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
-				streetAddressId = streetAddressInstance.id
+				
+				streetAddressInstanceList.each { streetAddressInstance ->
+					println "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
+					streetAddressId = streetAddressInstance.id
+				}
 			}
 
-			if (zip4) {
+			if ( ! streetAddressId && zip4) {
 				streetAddressInstanceList = StreetAddress.createCriteria().list{
 					and {
 						eq("address", address)
@@ -160,7 +167,7 @@ class ImportContactService {
 				
 				def className = addressInstance.class.toString()
 
-								// We make one?
+				// We make one?
 				println "Could not find StreetAddress for ${className}: ${addressInstance.id}"
 				println "\t${address}"
 				println "\t${addressInstance.city}, ${addressInstance.state} ${zipCode}-${zip4}"
@@ -172,10 +179,11 @@ class ImportContactService {
 						address2:addressInstance.address2, city:addressInstance.city, 
 						state: addressInstance.state, zipcode: zipCode, zip4: zip4,
 						country: us, standardized: true, userCreated: 'norc',
-						appCreated: 'ncs-etl')
+						appCreated: appCreated)
 
 					if ( ! streetAddressInstance.save(flush:true) ) {
 						println "Failed to save new Address!"
+						throw FailedToSaveStreetAddressException
 					} else {
 						streetAddressId = streetAddressInstance.id
 					}
@@ -198,13 +206,14 @@ class ImportContactService {
 				if (! dwellingUnitInstance) {
 					dwellingUnitInstance = new DwellingUnit(address: streetAddress)
 					dwellingUnitInstance.userCreated = username
-					dwellingUnitInstance.appCreated = 'ncs_etl'
+					dwellingUnitInstance.appCreated = appCreated
 					
 					if ( ! dwellingUnitInstance.save(flush:true) ) {
 						println "failed to save dwelling unit : ${streetAddress}"
 						dwellingUnitInstance.errors.each{
 							println "${it}"
 						}
+						throw FailedToSaveDwellingUnitException
 					}
 				}
 				dwellingUnitId = dwellingUnitInstance?.id
@@ -220,12 +229,12 @@ class ImportContactService {
 		
 		def dateFormat = "yyyy-MM-dd"
 		
+		def male = Gender.read(1)
+		def female = Gender.read(2)
+		
 		Person.withTransaction{
 		
 			def norcSuId = null
-			
-			def male = Gender.read(1)
-			def female = Gender.read(2)
 			
 			def gender = null
 			if (contactImportInstance.gender =~ /^[Mm1]/) {
@@ -249,7 +258,7 @@ class ImportContactService {
 			def lastName = contactImportInstance.lastName?.toLowerCase()?.capitalize()
 			def suffix = contactImportInstance.suffix?.toLowerCase()?.capitalize()
 			
-			println "Looking for Person ${lastName}, ${firstName}"
+			println "Looking for Person: ${lastName}, ${firstName}"
 			
 			// search for a person by SUID
 			if (contactImportLinkInstance.norcSuId) {
@@ -343,7 +352,8 @@ class ImportContactService {
 				}
 			}
 			
-			if (! personInstance ){
+			// TODO: disabled person creation... for now
+			if (! personInstance){
 				
 				personInstance = new Person(title: title,
 					firstName: firstName,
@@ -352,21 +362,20 @@ class ImportContactService {
 					suffix: suffix,
 					gender: gender,
 					birthDate: dob, 
-					appCreated: 'ncs-etl',
+					appCreated: appCreated,
 					isRecruitable: true)
 				
 				println "making person: ${personInstance.fullName}; ${personInstance.gender}"
 				if (personInstance.save(flush:true)) {
 					// If there's a NORC SU_ID, and it doesn't end in 00...
 					if ( norcSuId && ! (norcSuId =~ /00$/) ) {
-						def personLink = new PersonLink(norcSuId: norcSuId, person: personInstance).save(flush:true)
+						def personLink = new PersonLink(norcSuId: norcSuId, 
+							person: personInstance).save(flush:true)
 					}
 				} else {
-					personInstance.errors.each{
-						println "${it}"
-					}
+					personInstance.errors.each{ println "${it}" }
+					throw FailedToSavePersonException
 				}
-				
 			} else {
 				println "found person!"
 			}
@@ -377,11 +386,17 @@ class ImportContactService {
 				if (! personLinkInstance) {
 					println "Creating: new PersonLink"
 					personLinkInstance = new PersonLink(norcSuId: norcSuId, person:personInstance)
-					//personLinkInstance.save(flush:true)
+					if ( ! personLinkInstance.save(flush:true) ) {
+						personLinkInstance.errors.each{ println "${it}" }
+						throw FailedToSavePersonLinkInstanceException
+					}
 				} else if ( ! personLinkInstance.norcSuId) {
 					println "Updating: PersonLink"
 					personLinkInstance.norcSuId = norcSuId
-					//personLinkInstance.save(flush:true)
+					if ( ! personLinkInstance.save(flush:true) ) {
+						personLinkInstance.errors.each{ println "${it}" }
+						throw FailedToSavePersonLinkInstanceException
+					}
 				}
 			}
 		}
@@ -389,6 +404,7 @@ class ImportContactService {
 		if (personInstance?.id) {
 			personInstanceId = personInstance.id
 		}
+
 		return personInstanceId
 	}
 	
@@ -402,11 +418,12 @@ class ImportContactService {
 				if ( ! personPhoneInstance ) {
 					personPhoneInstance = new PersonPhone(person:personInstance,
 						phoneNumber:phoneInstance, phoneType: phoneType,
-						appCreated: 'ncs-etl', source: source,
+						appCreated: appCreated, source: source,
 						infoDate: sourceDate)
 					if ( ! personPhoneInstance.save(flush:true) ) {
 						println "Failed to Created Person <-> Phone Link for ${personInstance.fullName}"
 						personPhoneInstance.errors.each{ println "\t${it}" }
+						throw FailedToSavePersonPhoneException
 					}
 				}
 			}
@@ -425,11 +442,12 @@ class ImportContactService {
 					
 					personEmailInstance = new PersonEmail(person:personInstance,
 						emailAddress:emailInstance, emailType: personalEmail,
-						appCreated: 'ncs-etl', source: source,
+						appCreated: appCreated, source: source,
 						infoDate: sourceDate)
 					if ( ! personEmailInstance.save(flush:true) ) {
 						println "Failed to Create Person <-> Email Link for ${personInstance.fullName}"
 						personEmailInstance.errors.each{ println "\t${it}" }
+						throw FailedToSavePersonEmailException
 					}
 				}
 			}
@@ -448,11 +466,12 @@ class ImportContactService {
 					
 					personAddressInstance = new PersonAddress(person:personInstance,
 						streetAddress:addressInstance, addressType: homeAddress,
-						appCreated: 'ncs-etl', source: source,
+						appCreated: appCreated, source: source,
 						infoDate: sourceDate)
 					if ( ! personAddressInstance.save(flush:true) ) {
 						println "Failed to Create Person <-> Address Link for ${personInstance.fullName}"
 						personAddressInstance.errors.each{ println "\t${it}" }
+						throw FailedToSavePersonAddressException
 					}
 				}
 			}
@@ -570,11 +589,12 @@ class ImportContactService {
 				// any batches of this instrument type?
 				batchInstanceList.each {
 					if (! batchInstance ) { batchInstance = it }
-					println "Found Batch: ${batchInstance.id}"
+					// println "Found Batch: ${batchInstance.id}"
 				}
 			}
 	
 			if (! batchInstance ) {
+				println "Creating a new Batch..."
 				// create a batch
 				batchInstance = new Batch(instrumentDate:instrumentDate,
 					trackingDocumentSent: false, format: instrumentFormatInstance,
@@ -598,7 +618,7 @@ class ImportContactService {
 					println "Failed to create tracked item."
 				}
 			}
-			
+
 			return trackedItemInstance?.id
 		}
 	}
@@ -634,9 +654,9 @@ class ImportContactService {
 					def householdInstance = Household.findByDwelling(dwellingUnitInstance)
 					if ( ! householdInstance ) {
 						householdInstance = new Household(dwelling:dwellingUnitInstance)
-						householdInstance.appCreated = 'ncs-etl'
+						householdInstance.appCreated = appCreated
 					} else {
-						householdInstance.userUpdated = 'ncs-etl'
+						householdInstance.userUpdated = appCreated
 						householdInstance.lastUpdated = now
 					}
 					
@@ -646,6 +666,8 @@ class ImportContactService {
 						householdId = householdInstance.id
 					} else {
 						println "Failed to save household."
+						householdInstance.errors.each{ println it }
+						throw FailedToSaveHouseholdException
 					}
 				}
 			}
@@ -663,7 +685,7 @@ class ImportContactService {
 		
 		if ( ! sourceNorc )  {
 			sourceNorc = new Source(name:'NORC', 
-				appCreated:'ncs-etl', selectable:false).save(flush:true)
+				appCreated:appCreated, selectable:false).save(flush:true)
 		}
 
 		GParsPool.withPool {
@@ -730,12 +752,12 @@ class ImportContactService {
 						if (contactImportInstance.sourceKeyId && ! contactImportLinkInstance.norcSuId) {
 							def norcSuId = null
 							
+							// If the sourceName ends in _batch
 							if (contactImportInstance.sourceName =~ /batch$/) {
-								println "NORC Batch"
 								norcSuId = "00${contactImportInstance.sourceKeyId}"
 								contactImportLinkInstance.norcSuId = norcSuId
 							} else {
-								println "NOT NORC Batch: ${contactImportInstance.sourceName}"
+								println "NON NORC Batch Source: ${contactImportInstance.sourceName}"
 							}
 							
 							if (norcSuId && norcSuId.length() == 10) {
@@ -771,7 +793,7 @@ class ImportContactService {
 						
 						if (contactImportLinkInstance.norcSuId =~ /0[1-9]$/ && ! contactImportLinkInstance.personId) {
 							def norcSuId = contactImportLinkInstance.norcSuId
-							println "Looking up Person by NORC SUID (10 digit)"
+							println "Looking up Person by NORC SUID (10 digit, ${norcSuId}, ${contactImportInstance.lastName}, ${contactImportInstance.firstName})"
 							def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
 							if (norcPersonLink) {
 								contactImportLinkInstance.personId = norcPersonLink.person.id
@@ -780,23 +802,35 @@ class ImportContactService {
 
 						if (contactImportLinkInstance.norcSuId =~ /00$/ && ! contactImportLinkInstance.dwellingUnitId) {
 							def norcSuId = contactImportLinkInstance.norcSuId
+							println "Looking up Dwelling Unit by NORC SUID (10 digit)"
 							def norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
 							if (norcDwellingLink) {
 								contactImportLinkInstance.dwellingUnitId = norcDwellingLink.dwellingUnit.id
 							}
 						}
 
+						if (contactImportLinkInstance.norcSuId =~ /00$/ &&
+								! contactImportLinkInstance.personId &&
+								contactImportInstance.firstName &&
+								contactImportInstance.lastName) {
+							def norcSuId = contactImportLinkInstance.norcSuId
+							// Looking up existing person associated with this dwelling unit
+							
+						}
+
+
 						def dwellingUnitInstance = DwellingUnit.read(contactImportLinkInstance.dwellingUnitId)
 						
 						// Dwelling Unit...
 						if (contactImportLinkInstance.addressId && ! dwellingUnitInstance) {
+							// Make the dwelling unit
 							contactImportLinkInstance.dwellingUnitId = makeDwellingUnit(contactImportLinkInstance.addressId)
+							// load teh dwelling unit instance
 							dwellingUnitInstance = DwellingUnit.read(contactImportLinkInstance.dwellingUnitId)
 						}
 
 						// Person...
 						if ( (contactImportInstance.firstName || contactImportInstance.lastName) && ! contactImportLinkInstance.personId) {
-							
 							contactImportLinkInstance.personId = makePerson(contactImportInstance, contactImportLinkInstance)
 						}
 						
@@ -880,6 +914,33 @@ class ImportContactService {
 								batchDirectionInstance, instrumentDate)
 							
 						}
+
+						// Result
+						if ( contactImportLinkInstance.trackedItemId && contactImportInstance.resultId ) {
+
+							TrackedItem.withTransaction{
+								def trackedItemInstance = TrackedItem.get(contactImportLinkInstance.trackedItemId)
+								def resultInstance = Result.read(contactImportInstance.resultId)
+
+								if ( ! resultInstance) {
+									println "Invalid Result ID: ${contactImportInstance.resultId}"
+								} else if (trackedItemInstance && ! trackedItemInstance?.result) {
+									def itemResultInstance = new ItemResult(trackedItem: trackedItemInstance,
+									result: resultInstance, userCreated: username, 
+									receivedDate: contactImportInstance.instrumentDate,
+									appCreated: appCreated)
+
+									trackedItemInstance.result = itemResultInstance
+
+									if ( ! trackedItemInstance.save(flush:true) ) {
+										trackedItemInstance.errors.each{ println it }
+										throw FailedToSaveItemResultException
+									} else {
+										println "saved result ${resultInstance}"
+									}
+								}
+							}
+						}
 						
 						// Household
 						if (personInstance && dwellingUnitInstance) {
@@ -889,7 +950,7 @@ class ImportContactService {
 							}
 						}
 
-						// TODO: Appointments
+						// TODO: Appointments???
 					}
 					
 					if ( ! contactImportLinkInstance.save(flush:true)) {
@@ -937,6 +998,8 @@ class ImportContactService {
 							if (contactImportZp4Instance.updated) {
 								if ( ! contactImportZp4Instance.save(flush:true) ) {
 									println "failed to save ${contactImportZp4Instance} for ${contactImportInstance}."
+									contactImportZp4Instance.errors.each{ println it }
+									throw FailedToSaveContactImportZp4InstanceException
 								}
 							}
 						}

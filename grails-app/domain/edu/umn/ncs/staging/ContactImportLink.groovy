@@ -1,7 +1,7 @@
 package edu.umn.ncs.staging
 
 class ContactImportLink {
-	
+
 	Long personId
 	Long primaryPhoneId
 	Long secondaryPhoneId
@@ -15,10 +15,12 @@ class ContactImportLink {
 	Long appointmentId
 	Long trackedItemId
 	String norcSuId
-	
+
+	String toString() { "ContactImportLink for ${contactImport}" }
+
 	static belongsTo = [contactImport : ContactImport ]
 
-	    static constraints = {
+	static constraints = {
 		personId(nullable:true)
 		addressId(nullable:true)
 		primaryPhoneId(nullable:true)
@@ -32,5 +34,5 @@ class ContactImportLink {
 		appointmentId(nullable:true)
 		trackedItemId(nullable:true)
 		norcSuId(nullable:true)
-    }
+	}
 }

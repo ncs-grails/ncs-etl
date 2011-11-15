@@ -1,7 +1,7 @@
 package edu.umn.ncs.staging
 
 class ContactImport {
-	
+
 	String title
 	String firstName
 	String middleName
@@ -9,6 +9,8 @@ class ContactImport {
 	String suffix
 	String gender
 	String birthDate
+	String sourcePersonKey
+	String sourceDwellingUnitKey
 	String sourceKeyId
 	String sourceName
 	Date sourceDate = new Date()
@@ -33,11 +35,12 @@ class ContactImport {
 	Integer instrumentId
 	Integer batchDirectionId
 	Integer instrumentTypeId
-	
+	Integer resultId
+
 	static transients = [ 'address1', 'zipcode' ]
-	
+
 	String getZipcode() { zipCode }
-	
+
 	String getAddress1() {
 		if (addressUnit) {
 			return "${address} Unit ${addressUnit}"
@@ -45,8 +48,10 @@ class ContactImport {
 			return address
 		}
 	}
-	
-    static constraints = {
+
+	String toString() { "${sourceName}[${sourceKeyId}]" }
+
+	static constraints = {
 		title(nullable:true)
 		firstName(nullable:true)
 		middleName(nullable:true)
@@ -78,6 +83,8 @@ class ContactImport {
 		instrumentId(nullable:true)
 		batchDirectionId(nullable:true)
 		instrumentTypeId(nullable:true)
-	
-    }
+		resultId(nullable:true)
+		sourcePersonKey(nullable:true)
+		sourceDwellingUnitKey(nullable:true)
+	}
 }

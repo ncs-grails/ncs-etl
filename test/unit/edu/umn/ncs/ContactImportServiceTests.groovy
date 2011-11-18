@@ -2,7 +2,7 @@ package edu.umn.ncs
 
 import grails.test.*
 
-class ImportContactServiceTests extends GrailsUnitTestCase {
+class ContactImportServiceTests extends GrailsUnitTestCase {
     protected void setUp() {
         super.setUp()
     }

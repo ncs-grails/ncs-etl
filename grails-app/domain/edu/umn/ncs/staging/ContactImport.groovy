@@ -2,6 +2,12 @@ package edu.umn.ncs.staging
 
 class ContactImport {
 
+	String sourcePersonKey
+	String sourceDwellingUnitKey
+	String sourceKeyId
+	String sourceName
+	Date sourceDate = new Date()
+
 	String title
 	String firstName
 	String middleName
@@ -9,11 +15,7 @@ class ContactImport {
 	String suffix
 	String gender
 	String birthDate
-	String sourcePersonKey
-	String sourceDwellingUnitKey
-	String sourceKeyId
-	String sourceName
-	Date sourceDate = new Date()
+
 	String address
 	String addressUnit
 	String address2
@@ -24,25 +26,35 @@ class ContactImport {
 	String county
 	String internationalPostalCode
 	String countryName
+
 	String primaryPhone
 	String secondaryPhone
 	String homePhone
 	String workPhone
 	String cellPhone
+
 	String emailAddress
+
 	String appointmentDatetime
 	Integer appointmentType
+
 	Date instrumentDate
 	Integer instrumentId
 	Integer batchDirectionId
 	Integer instrumentTypeId
 	Integer resultId
+
 	Integer eventOfInterestStudyId
 	Integer eventOfInterestSourceId
 	Date eventOfInterestContactDate
 	Integer eventOfInterestCode
 	Date eventOfInterestDate
 	String eventOfInterestDescription
+
+	String studyName
+	String subjectId
+	Integer enrollmentTypeId
+	Date enrollmentDate
 
 	static transients = [ 'address1', 'zipcode' ]
 
@@ -100,5 +112,9 @@ class ContactImport {
 		eventOfInterestCode(nullable:true)
 		eventOfInterestDate(nullable:true)
 		eventOfInterestDescription(nullable:true)
+		studyName(nullable:true)
+		subjectId(nullable:true)
+		enrollmentTypeId(nullable:true)
+		enrollmentDate(nullable:true)
 	}
 }

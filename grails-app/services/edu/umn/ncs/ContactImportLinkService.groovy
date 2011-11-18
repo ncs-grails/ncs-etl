@@ -67,6 +67,9 @@ class ContactImportLinkService {
 			// find the EOI id if the person id is
 			// known.
 			eventOfInterestId = eventOfInterestId ?: linkEventOfInterest(contactImportLinkInstance)
+
+			// find the Study id if the Study Name was passed
+			studyId = studyId ?: linkStudy(contactImportInstance)
 		}
 
 		return contactImportInstance
@@ -104,40 +107,43 @@ class ContactImportLinkService {
 		return phoneInstanceId
 	}
 
-	def linkEmailAddress() {
+	def linkEmailAddress(contactImportInstance) {
 	}
 
-	def linkStreetAddress() {
+	def linkStreetAddress(contactImportInstance) {
 	}
 
-	def linkDwellingUnit() {
+	def linkDwellingUnit(contactImportInstance) {
 	}
 
-	def linkHousehold() {
+	def linkHousehold(contactImportInstance) {
 	}
 
-	def linkAppointment() {
+	def linkAppointment(contactImportInstance) {
 	}
 
-	def linkBatch() {
+	def linkBatch(contactImportInstance) {
 	}
 
-	def linkTrackedItem() {
+	def linkTrackedItem(contactImportInstance) {
 	}
 
-	def linkEventOfInterest() {
+	def linkEventOfInterest(contactImportInstance) {
 	}
 
-	def linkNorcSuId() {
+	def linkNorcSuId(contactImportInstance) {
 	}
 
-	def linkNorcDwellingSuId() {
+	def linkNorcDwellingSuId(contactImportInstance) {
+	}
+
+	def linkStudy(contactImportInstance) {
 	}
 
 	// END: PRIMARY LINK LOOKUP METHODS
 
 	// BEGIN: SECONDARY LINK LOOKUP METHODS
-	def helpLinkPersonByNorcSuId() {
+	def helpLinkPersonByNorcSuId(contactImportInstance) {
 	}
 	// END: SECONDARY LINK LOOKUP METHODS
 }

@@ -31,6 +31,11 @@ class ContactImportLink {
 	Long trackedItemId
 	/** EventOfInterest.id */
 	Long eventOfInterestId
+	/** Study.id */
+	Long studyId
+	/** Subject.id */
+	Long subjectId
+
 	/** NORC SU_ID */
 	String norcSuId
 	/** NORC SU_ID (for dwelling unit) */
@@ -55,6 +60,8 @@ class ContactImportLink {
 		trackedItemId(nullable:true)
 		eventOfInterestId(nullable:true)
 		appointmentId(nullable:true)
+		studyId(nullable:true)
+		subjectId(nullable:true)
 		norcSuId(nullable:true)
 		norcDwellingSuId(nullable:true)
 	}

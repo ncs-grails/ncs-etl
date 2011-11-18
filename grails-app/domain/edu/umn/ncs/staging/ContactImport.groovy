@@ -29,13 +29,20 @@ class ContactImport {
 	String homePhone
 	String workPhone
 	String cellPhone
-	String appointmentDatetime
 	String emailAddress
+	String appointmentDatetime
+	Integer appointmentType
 	Date instrumentDate
 	Integer instrumentId
 	Integer batchDirectionId
 	Integer instrumentTypeId
 	Integer resultId
+	Integer eventOfInterestStudyId
+	Integer eventOfInterestSourceId
+	Date eventOfInterestContactDate
+	Integer eventOfInterestCode
+	Date eventOfInterestDate
+	String eventOfInterestDescription
 
 	static transients = [ 'address1', 'zipcode' ]
 
@@ -60,6 +67,8 @@ class ContactImport {
 		gender(nullable:true)
 		birthDate(nullable:true)
 		sourceKeyId(nullable:true)
+		sourcePersonKey(nullable:true)
+		sourceDwellingUnitKey(nullable:true)
 		sourceName(nullable:true)
 		sourceDate(nullable:true)
 		address(nullable:true)
@@ -77,14 +86,19 @@ class ContactImport {
 		homePhone(nullable:true)
 		workPhone(nullable:true)
 		cellPhone(nullable:true)
-		appointmentDatetime(nullable:true)
 		emailAddress(nullable:true)
+		appointmentDatetime(nullable:true)
+		appointmentType(nullable:true)
 		instrumentDate(nullable:true)
 		instrumentId(nullable:true)
 		batchDirectionId(nullable:true)
 		instrumentTypeId(nullable:true)
 		resultId(nullable:true)
-		sourcePersonKey(nullable:true)
-		sourceDwellingUnitKey(nullable:true)
+		eventOfInterestStudyId(nullable:true)
+		eventOfInterestSourceId(nullable:true)
+		eventOfInterestContactDate(nullable:true)
+		eventOfInterestCode(nullable:true)
+		eventOfInterestDate(nullable:true)
+		eventOfInterestDescription(nullable:true)
 	}
 }

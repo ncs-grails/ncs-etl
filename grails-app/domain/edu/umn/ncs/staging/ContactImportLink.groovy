@@ -1,20 +1,40 @@
 package edu.umn.ncs.staging
 
+/** Linking IDs to prep the import process */
 class ContactImportLink {
 
+	/** Person.id */
 	Long personId
+	/** primary Phone.id */
 	Long primaryPhoneId
+	/** secondary Phone.id */
 	Long secondaryPhoneId
+	/** home Phone.id */
 	Long homePhoneId
+	/** work Phone.id */
 	Long workPhoneId
+	/** cell Phone.id */
 	Long cellPhoneId
+	/** EmailAddress.id */
 	Long emailAddressId
+	/** StreetAddress.id */
 	Long addressId
+	/** DwellingUnit.id */
 	Long dwellingUnitId
+	/** Household.id */
 	Long householdId
+	/** Appointment.id */
 	Long appointmentId
+	/** Batch.id */
+	Long batchId
+	/** TrackedItem.id */
 	Long trackedItemId
+	/** EventOfInterest.id */
+	Long eventOfInterestId
+	/** NORC SU_ID */
 	String norcSuId
+	/** NORC SU_ID (for dwelling unit) */
+	String norcDwellingSuId
 
 	String toString() { "ContactImportLink for ${contactImport}" }
 
@@ -31,8 +51,11 @@ class ContactImportLink {
 		emailAddressId(nullable:true)
 		dwellingUnitId(nullable:true)
 		householdId(nullable:true)
-		appointmentId(nullable:true)
+		batchId(nullable:true)
 		trackedItemId(nullable:true)
+		eventOfInterestId(nullable:true)
+		appointmentId(nullable:true)
 		norcSuId(nullable:true)
+		norcDwellingSuId(nullable:true)
 	}
 }

@@ -6,7 +6,7 @@ import edu.umn.ncs.staging.ContactImport
 import edu.umn.ncs.staging.ContactImportLink
 import edu.umn.ncs.staging.ContactImportZp4
 
-class ImportContactService {
+class ContactImportService {
 
     static transactional = true
 

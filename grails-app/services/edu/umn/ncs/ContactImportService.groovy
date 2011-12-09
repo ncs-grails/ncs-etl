@@ -479,7 +479,8 @@ class ContactImportService {
 	}
 	
 	
-	def makeTrackedItem(personInstance, dwellingUnitInstance, instrumentInstance, instrumentFormatInstance, batchDirectionInstance, instrumentDate) {
+	def makeTrackedItem(personInstance, dwellingUnitInstance, instrumentInstance, 
+		instrumentFormatInstance, batchDirectionInstance, instrumentDate) {
 		
 		// Initial
 		def isInitialInstance = IsInitial.read(1)

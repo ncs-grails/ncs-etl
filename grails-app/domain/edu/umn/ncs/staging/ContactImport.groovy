@@ -35,8 +35,8 @@ class ContactImport {
 
 	String emailAddress
 
-	String appointmentDatetime
-	Integer appointmentType
+	String appointmentDateTime
+	Integer appointmentTypeId
 
 	Date instrumentDate
 	Integer instrumentId
@@ -47,6 +47,7 @@ class ContactImport {
 	Integer eventOfInterestStudyId
 	Integer eventOfInterestSourceId
 	Date eventOfInterestContactDate
+	Integer eventOfInterestTypeId
 	Integer eventOfInterestCode
 	Date eventOfInterestDate
 	String eventOfInterestDescription
@@ -99,8 +100,8 @@ class ContactImport {
 		workPhone(nullable:true)
 		cellPhone(nullable:true)
 		emailAddress(nullable:true)
-		appointmentDatetime(nullable:true)
-		appointmentType(nullable:true)
+		appointmentDateTime(nullable:true)
+		appointmentTypeId(nullable:true)
 		instrumentDate(nullable:true)
 		instrumentId(nullable:true)
 		batchDirectionId(nullable:true)
@@ -109,6 +110,7 @@ class ContactImport {
 		eventOfInterestStudyId(nullable:true)
 		eventOfInterestSourceId(nullable:true)
 		eventOfInterestContactDate(nullable:true)
+		eventOfInterestTypeId(nullable:true)
 		eventOfInterestCode(nullable:true)
 		eventOfInterestDate(nullable:true)
 		eventOfInterestDescription(nullable:true)

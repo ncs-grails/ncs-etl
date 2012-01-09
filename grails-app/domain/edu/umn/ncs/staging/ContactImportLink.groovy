@@ -62,7 +62,7 @@ class ContactImportLink {
 		appointmentId(nullable:true)
 		studyId(nullable:true)
 		subjectId(nullable:true)
-		norcSuId(nullable:true)
-		norcDwellingSuId(nullable:true)
+		norcSuId(nullable:true, size:8..8)
+		norcDwellingSuId(nullable:true, size:10..10)
 	}
 }

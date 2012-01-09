@@ -111,7 +111,7 @@ class ContactImportService {
 				}
 				
 				streetAddressInstanceList.each { streetAddressInstance ->
-					println "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
+					log.trace "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
 					streetAddressId = streetAddressInstance.id
 				}
 			}
@@ -130,7 +130,7 @@ class ContactImportService {
 				}
 				
 				streetAddressInstanceList.each { streetAddressInstance ->
-					println "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
+					log.trace "Found Address: ${streetAddressInstance.address}, ID: ${streetAddressInstance.id}"
 					streetAddressId = streetAddressInstance.id
 				}
 			}
@@ -151,7 +151,7 @@ class ContactImportService {
 					cache(false)
 				}
 				streetAddressInstanceList.each { streetAddressInstance ->
-					println "Found Address: ${streetAddressInstance.address}"
+					log.trace "Found Address: ${streetAddressInstance.address}"
 					streetAddressId = streetAddressInstance.id
 				}
 			}
@@ -258,7 +258,7 @@ class ContactImportService {
 			def lastName = contactImportInstance.lastName?.toLowerCase()?.capitalize()
 			def suffix = contactImportInstance.suffix?.toLowerCase()?.capitalize()
 			
-			println "Looking for Person: ${lastName}, ${firstName}"
+			log.trace "Looking for Person: ${lastName}, ${firstName}"
 			
 			// search for a person by SUID
 			if (contactImportLinkInstance.norcSuId) {
@@ -266,7 +266,6 @@ class ContactImportService {
 				norcSuId = contactImportLinkInstance.norcSuId
 				def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
 				if (norcPersonLink) {
-					contactImportLinkInstance.norcSuId = norcPersonLink.norcSuId
 					if ( ! contactImportLinkInstance.personId ) {
 						contactImportLinkInstance.personId = norcPersonLink.person.id
 					}
@@ -384,11 +383,17 @@ class ContactImportService {
 				println "NORC SU_ID: ${norcSuId}"
 				def personLinkInstance = PersonLink.findByNorcSuId(norcSuId)
 				if (! personLinkInstance) {
-					println "Creating: new PersonLink"
-					personLinkInstance = new PersonLink(norcSuId: norcSuId, person:personInstance)
-					if ( ! personLinkInstance.save(flush:true) ) {
-						personLinkInstance.errors.each{ println "${it}" }
-						throw FailedToSavePersonLinkInstanceException
+
+					personLinkInstance = PersonLink.findByPerson(personInstance)
+					if (personLinkInstance) {
+						println "WARNING!: Person: ${personInstance.id} already has NORC SU_ID: ${personLinkInstance.norcSuId}, but attempting to assign them new NORC SU_ID: ${norcSuId}!"
+					} else {
+						println "Creating: new PersonLink"
+						personLinkInstance = new PersonLink(norcSuId: norcSuId, person:personInstance)
+						if ( ! personLinkInstance.save(flush:true) ) {
+							personLinkInstance.errors.each{ println "${it}" }
+							throw FailedToSavePersonLinkInstanceException
+						}
 					}
 				} else if ( ! personLinkInstance.norcSuId) {
 					println "Updating: PersonLink"
@@ -491,7 +496,7 @@ class ContactImportService {
 		Batch batchInstance = null
 		
 		
-		// println "Looking for Tracked Item with Batch Date: ${instrumentDate}, and Instrument Type: ${instrumentInstance.name}"
+		// log.trace "Looking for Tracked Item with Batch Date: ${instrumentDate}, and Instrument Type: ${instrumentInstance.name}"
 		
 		TrackedItem.withTransaction {
 			
@@ -566,7 +571,7 @@ class ContactImportService {
 					trackedItemInstance = it
 					batchInstance = it.batch
 				}
-				println "Found Tracked Item: ${trackedItemInstance.id}"
+				log.trace "Found Tracked Item: ${trackedItemInstance.id}"
 			}
 	
 			if ( ! batchInstance ) {
@@ -590,7 +595,7 @@ class ContactImportService {
 				// any batches of this instrument type?
 				batchInstanceList.each {
 					if (! batchInstance ) { batchInstance = it }
-					// println "Found Batch: ${batchInstance.id}"
+					// log.trace "Found Batch: ${batchInstance.id}"
 				}
 			}
 	
@@ -749,76 +754,63 @@ class ContactImportService {
 							}
 						}
 									
-						// NORC SU_ID...
-						if (contactImportInstance.sourceKeyId && ! contactImportLinkInstance.norcSuId) {
-							def norcSuId = null
-							
-							// If the sourceName ends in _batch
-							if (contactImportInstance.sourceName =~ /batch$/) {
-								norcSuId = "00${contactImportInstance.sourceKeyId}"
-								contactImportLinkInstance.norcSuId = norcSuId
-							} else {
-								println "NON NORC Batch Source: ${contactImportInstance.sourceName}"
-							}
-							
-							if (norcSuId && norcSuId.length() == 10) {
-								if (norcSuId =~ /00$/) {
-									// Lookup dwelling unit info...
-									def norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
-									if (norcDwellingLink) {
-										contactImportLinkInstance.norcSuId = norcDwellingLink.norcSuId
-										if ( ! contactImportLinkInstance.dwellingUnitId ) {
-											contactImportLinkInstance.dwellingUnitId = norcDwellingLink.dwellingUnit.id
-										}
-									} else {
-										println "Unable to find NORC SU_ID for DwellingUnit: ${norcSuId}!"
+						if (contactImportInstance.sourceName =~ /^norc_.*/) {
+							// NORC Dwelling Unit SU_ID...
+							if (contactImportInstance.sourceDwellingUnitKey && ! contactImportLinkInstance.norcSuId) {
+								def norcSuId = "00${contactImportInstance.sourceDwellingUnitKey}"
+								contactImportLinkInstance.norcDwellingSuId = norcSuId
+
+								def norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
+								if (norcDwellingLink) {
+									contactImportLinkInstance.norcDwellingSuId = norcDwellingLink.norcSuId
+									if ( ! contactImportLinkInstance.dwellingUnitId ) {
+										contactImportLinkInstance.dwellingUnitId = norcDwellingLink.dwellingUnit.id
 									}
 								} else {
-									// Lookup person info...
-									norcSuId = norcSuId[2..9]
-								
-									def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
-									if (norcPersonLink) {
-										contactImportLinkInstance.norcSuId = norcPersonLink.norcSuId
-										if ( ! contactImportLinkInstance.personId ) {
-											contactImportLinkInstance.personId = norcPersonLink.person.id
-										} else if (contactImportLinkInstance.personId != norcPersonLink.person.id ) {
-											println "Person: ${contactImportLinkInstance.personId} should be: ${norcPersonLink.person.id}!"
-										}
-									} else {
-										println "Unable to find NORC SU_ID for Person: ${norcSuId}!"
-									}
+									println "Unable to find NORC SU_ID for DwellingUnit: ${norcSuId}!"
 								}
 							}
+
+							// NORC Person SU_ID...
+							if (contactImportInstance.sourcePersonKey && ! contactImportLinkInstance.norcSuId) {
+
+								def norcSuId = contactImportInstance.sourcePersonKey
+
+								contactImportLinkInstance.norcSuId = norcSuId
+
+								def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
+								if (norcPersonLink) {
+									if ( ! contactImportLinkInstance.personId ) {
+										contactImportLinkInstance.personId = norcPersonLink.person.id
+									} else if (contactImportLinkInstance.personId != norcPersonLink.person.id ) {
+										println "Person: ${contactImportLinkInstance.personId} should be: ${norcPersonLink.person.id}!"
+									}
+								} else {
+									println "Unable to find NORC SU_ID for Person: ${norcSuId}!"
+								}
+							}
+						} else {
+							println "NON NORC Batch Source: ${contactImportInstance.sourceName}"
 						}
 						
-						if (contactImportLinkInstance.norcSuId =~ /0[1-9]$/ && ! contactImportLinkInstance.personId) {
+						// Looking for person base onf SU_ID
+						if (contactImportLinkInstance.norcSuId && ! contactImportLinkInstance.personId) {
 							def norcSuId = contactImportLinkInstance.norcSuId
-							println "Looking up Person by NORC SUID (10 digit, ${norcSuId}, ${contactImportInstance.lastName}, ${contactImportInstance.firstName})"
+							log.trace "Looking up Person by NORC SUID (8 digit, ${norcSuId}, ${contactImportInstance.lastName}, ${contactImportInstance.firstName})"
 							def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
 							if (norcPersonLink) {
 								contactImportLinkInstance.personId = norcPersonLink.person.id
 							}
 						}
 
-						if (contactImportLinkInstance.norcSuId =~ /00$/ && ! contactImportLinkInstance.dwellingUnitId) {
-							def norcSuId = contactImportLinkInstance.norcSuId
-							println "Looking up Dwelling Unit by NORC SUID (10 digit)"
+						if (contactImportLinkInstance.norcDwellingSuId && ! contactImportLinkInstance.dwellingUnitId) {
+							def norcSuId = contactImportLinkInstance.norcDwellingSuId
+							log.trace "Looking up Dwelling Unit by NORC SUID (10 digit)"
 							def norcDwellingLink = DwellingUnitLink.findByNorcSuId(norcSuId)
 							if (norcDwellingLink) {
 								contactImportLinkInstance.dwellingUnitId = norcDwellingLink.dwellingUnit.id
 							}
 						}
-
-						if (contactImportLinkInstance.norcSuId =~ /00$/ &&
-								! contactImportLinkInstance.personId &&
-								contactImportInstance.firstName &&
-								contactImportInstance.lastName) {
-							def norcSuId = contactImportLinkInstance.norcSuId
-							// Looking up existing person associated with this dwelling unit
-							
-						}
-
 
 						def dwellingUnitInstance = DwellingUnit.read(contactImportLinkInstance.dwellingUnitId)
 						
@@ -955,23 +947,28 @@ class ContactImportService {
 					}
 					
 					if ( ! contactImportLinkInstance.save(flush:true)) {
-						println "Could not create ContactImportLink."
+						println "Could not create ContactImportLink:"
+						contactImportLinkInstance.errors.each{
+							println "\t${it}"
+						}
 					}
 				}
 			}
 		}
 
-				// Person NORC_SUID Link
+		// Person NORC_SUID Link
 		def query = """INSERT INTO person_link
 				(version, norc_su_id, person_id)
-			SELECT 0, ci.source_key_id, p.id
+			SELECT 0, ci.source_person_key, p.id
 			FROM contact_import ci INNER JOIN
 				contact_import_link cil ON ci.id = cil.contact_import_id INNER JOIN
 				person p ON p.id = cil.person_id LEFT OUTER JOIN
 				person_link pl ON p.id = pl.person_id
 			WHERE (cil.person_id IS NOT NULL)
-				AND (ci.source_key_id NOT LIKE '%00')
-				AND (pl.id IS NULL);"""
+				AND (ci.source_person_key NOT LIKE '%00')
+				AND (ci.source_person_key NOT LIKE '9%')
+				AND (pl.id IS NULL)
+			GROUP BY ci.source_person_key, p.id;"""
 		def sql = new Sql(dataSource) 
 		sql.execute(query)
 

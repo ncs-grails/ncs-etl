@@ -439,14 +439,13 @@ class ContactImportLinkService {
 			def householdInstance = Household.read(householdId)
 			def dwellingUnitInstance = DwellingUnit.read(dwellingUnitId)
 
-			def batchInstance = Batch.read(batchId)
+			Batch batchInstance = Batch.read(batchId)
 
 			if (batchInstance && dwellingUnitInstance ) {
 
 				Date lowDate = instrumentDate - 1
 				Date highDate = instrumentDate + 1
 				TrackedItem trackedItemInstance = null
-				Batch batchInstance = null
 
 				// Look up the tracked item by the batch
 				if (personInstance) {
@@ -528,9 +527,10 @@ class ContactImportLinkService {
 
 	// This is the SU_ID for the person
 	def linkNorcSuId(contactImportLinkInstance) {
+
 		def contactImportInstance = contactImportLinkInstance.contactImport
 		def norcSuId = null
-		def norcPrefix =~ /^norc_.*/
+		def norcPrefix = ~/^norc_.*/
 		def firstName = contactImportInstance.firstName
 
 		// We only link NORC su_ids for NORC data sources
@@ -567,7 +567,7 @@ class ContactImportLinkService {
 	def linkNorcDwellingSuId(contactImportLinkInstance) {
 		def contactImportInstance = contactImportLinkInstance.contactImport
 		def norcDwellingSuId = null
-		def norcPrefix =~ /^norc_.*/
+		def norcPrefix = ~/^norc_.*/
 
 		// We only link NORC su_ids for NORC data sources
 		if ( norcPrefix.matcher(contactImportInstance.sourceName).matches() ) {
@@ -634,22 +634,27 @@ class ContactImportLinkService {
 
 	/** Lookup the person based on the dwelling unit / name */
 	def helpLinkPersonByDwellingUnitName(contactImportLinkInstance) {
+		return false
 	}
 
 	/** Lookup the person based on the name / address / phone */
-	def helpLinkPersonBy(contactImportLinkInstance) {
+	def helpLinkPersonByNameAddressPhone(contactImportLinkInstance) {
+		return false
 	}
 
 	/** Lookup the person based on the name / address */
-	def helpLinkPersonBy(contactImportLinkInstance) {
+	def helpLinkPersonByNameAddress(contactImportLinkInstance) {
+		return false
 	}
 
 	/** Lookup the person based on the name / phone */
-	def helpLinkPersonBy(contactImportLinkInstance) {
+	def helpLinkPersonByNamePhone(contactImportLinkInstance) {
+		return false
 	}
 
 	/** Lookup the person by name / birthdate */
-	def helpLinkPersonBy(contactImportLinkInstance) {
+	def helpLinkPersonByNameBirthdate(contactImportLinkInstance) {
+		return false
 	}
 
 

@@ -16,6 +16,13 @@ class ExtractTransformLoadController {
 		redirect(view:"/")
 	}
 	
+	def repairDupPreferredOrder = {
+		
+		contactImportService.cleanUpPreferredOrder()
+
+		redirect(view:"/")
+	}
+	
 	def zp4StandardizeImportData = {
 		contactImportService.zp4StandardizeImportData()
 		

@@ -691,7 +691,10 @@ class ContactImportService {
 		
 		if ( ! sourceNorc )  {
 			sourceNorc = new Source(name:'NORC', 
-				appCreated:appCreated, selectable:false).save(flush:true)
+				appCreated:appCreated, selectable:false)
+			if ( ! sourceNorc.save(flush:true)) {
+				println 'WARNING, Unable to create NORC Source record'
+			}
 		}
 
 		GParsPool.withPool {
@@ -1006,5 +1009,62 @@ class ContactImportService {
 			}
 		}
 		println "done standardizing contact import addresses."
+	}
+
+
+	def cleanUpPreferredOrder = {
+		// Clean up addresses
+		def sql = """
+		select count(pa), pa.person, pa.preferredOrder
+		from PersonAddress pa
+		group by pa.person, pa.preferredOrder
+		having count(pa) > 1
+		"""
+		def multiContactResults = Person.executeQuery(sql)
+
+		multiContactResults.each{ result  ->
+			def personInstance = Person.get(result[1].id)
+			def recordCount = result[0]
+			def sortOrder = recordCount - 1
+
+			println "Person: ${personInstance} has ${recordCount} addresses with the same order."
+
+			personInstance.streetAddresses.sort{ it.dateCreated }.each{ personAddressInstance ->
+				personAddressInstance.preferredOrder = sortOrder
+				if ( !  personAddressInstance.save() ) {
+					println "ERROR Trying to update Sort Order for ${personInstance}:"
+					println "\t${sortOrder}\t${personAddressInstance.dateCreated}\t${personAddressInstance.streetAddress.address}"
+				}
+				sortOrder--	
+			}
+		}
+
+		// Clean up phone numbers
+		sql = """
+		select count(pp), pp.person, pp.preferredOrder
+		from PersonPhone pp
+		group by pp.person, pp.preferredOrder
+		having count(pp) > 1
+		"""
+		multiContactResults = Person.executeQuery(sql)
+
+		multiContactResults.each{ result  ->
+			def personInstance = Person.get(result[1].id)
+			def recordCount = result[0]
+			def sortOrder = recordCount - 1
+
+			println "Person: ${personInstance} has ${recordCount} phones with the same order."
+
+			personInstance.phoneNumbers.sort{ it.dateCreated }.each{ personPhoneInstance ->
+				personPhoneInstance.preferredOrder = sortOrder
+				if ( !  personPhoneInstance.save() ) {
+					println "ERROR Trying to update Sort Order for ${personInstance}:"
+					println "\t${sortOrder}\t${personPhoneInstance.dateCreated}\t${personPhoneInstance.phoneNumber}"
+				}
+				sortOrder--	
+			}
+		}
+
+		println "Done cleaning up sort order problems."
 	}
 }

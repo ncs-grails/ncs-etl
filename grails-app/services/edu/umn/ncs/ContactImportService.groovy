@@ -222,6 +222,35 @@ class ContactImportService {
 		return dwellingUnitId
 	}
 
+	def updateBirthdate(contactImportInstance, personInstance) {
+
+		def dateFormat = "yyyy-MM-dd"
+		Date dob = null
+
+		if (contactImportInstance.birthDate && contactImportInstance.birthDate != '--') {
+			try {
+				dob = Date.parse(dateFormat, contactImportInstance.birthDate)
+			} catch (Exception ex) {
+				println "unable to parse birthdate: ${contactImportInstance.birthDate}"
+			}
+		}
+
+		if (dob && personInstance.birthDate != dob) {
+			Person.withTransaction{
+				// re-load person with write access
+				personInstance = Person.get(personInstance.id)
+				println "Updating DOB for ${personInstance} to '${dob}'..."
+				personInstance.birthDate = dob
+				if ( ! personInstance.save(flush:true) ) {
+					println "ERROR Saving Birthdate: ${dob} for person: ${personInstance}"
+					personInstance.errors.each{
+						println "\t${it}"
+					}
+				}
+			}
+		}
+	}
+
 	def makePerson(contactImportInstance, contactImportLinkInstance) {
 		
 		def personInstance = null
@@ -828,6 +857,11 @@ class ContactImportService {
 						// Person...
 						if ( (contactImportInstance.firstName || contactImportInstance.lastName) && ! contactImportLinkInstance.personId) {
 							contactImportLinkInstance.personId = makePerson(contactImportInstance, contactImportLinkInstance)
+						}
+
+						// Birthdate Updates
+						if ( contactImportLinkInstance.personId && contactImportInstance.birthDate ) {
+							updateBirthdate(contactImportInstance, Person.read(contactImportLinkInstance.personId) )
 						}
 						
 						// Person Contact - Phones

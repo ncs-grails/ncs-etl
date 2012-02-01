@@ -13,7 +13,7 @@ class ContactImportService {
 	static appCreated = 'ncs-etl'
 	
 	def dataSource
-	def authenticateService
+	def springSecurityService
 	private def username = null
 	def us = Country.findByAbbreviation("us")
 
@@ -714,7 +714,7 @@ class ContactImportService {
     def processContact() {
 		
 		def now = new Date()
-		username = authenticateService?.principal()?.getUsername()
+		username = springSecurityService?.principal?.getUsername()
 		
 		def sourceNorc = Source.findByName("Name")
 		

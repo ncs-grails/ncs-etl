@@ -36,4 +36,10 @@ grails.project.dependency.resolution = {
         // runtime 'mysql:mysql-connector-java:5.1.5'
 		build 'org.codehaus.gpars:gpars:0.11'
     }
+    plugins {
+		compile ":spring-security-core:1.2.7.2"
+		compile ":spring-security-ldap:1.0.5.1"
+		compile ":spring-security-shibboleth-native-sp:1.0.2"
+		provided ":spring-security-mock:1.0.1"
+	}
 }

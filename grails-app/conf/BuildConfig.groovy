@@ -37,9 +37,38 @@ grails.project.dependency.resolution = {
 		build 'org.codehaus.gpars:gpars:0.11'
     }
     plugins {
+		compile ":hibernate:$grailsVersion"
+		compile ":tomcat:$grailsVersion"
+
 		compile ":spring-security-core:1.2.7.2"
 		compile ":spring-security-ldap:1.0.5.1"
 		compile ":spring-security-shibboleth-native-sp:1.0.3"
+
+		compile ":address-lookup-zpfour:0.1.2"
+		compile ":audit-logging:0.5.4"
+		compile ":jquery:1.7.1"
+		compile ":ncs-norc-link:0.4"
+		compile ":ncs-people:0.8"
+		compile ":ncs-recruitment:1.0"
+		compile ":ncs-tracking:3.2.2"
+		compile ":ncs-web-template:0.2"
+		compile ":quartz:0.4.2"
+
 		provided ":spring-security-mock:1.0.1"
+
+		test ":code-coverage:1.2.5"
+		test ":codenarc:0.16.1"
 	}
 }
+
+codenarc.reports = {
+	JenkinsXmlReport('xml') {
+		outputFile = 'target/test-reports/CodeNarcReport.xml'
+		title = 'CodeNarc Report for NCS ETL Process'
+	}
+	JenkinsHtmlReport('html') {
+		outputFile = 'CodeNarcReport.html'
+		title = 'CodeNarc Report for NCS ETL Process'
+	}
+}
+codenarc.propertiesFile = 'grails-app/conf/codenarc.properties'

@@ -39,7 +39,7 @@ grails.project.dependency.resolution = {
     plugins {
 		compile ":spring-security-core:1.2.7.2"
 		compile ":spring-security-ldap:1.0.5.1"
-		compile ":spring-security-shibboleth-native-sp:1.0.2"
+		compile ":spring-security-shibboleth-native-sp:1.0.3"
 		provided ":spring-security-mock:1.0.1"
 	}
 }

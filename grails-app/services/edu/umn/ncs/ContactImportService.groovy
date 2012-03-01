@@ -7,7 +7,8 @@ import edu.umn.ncs.staging.ContactImportLink
 import edu.umn.ncs.staging.ContactImportZp4
 
 class ContactImportService {
-
+	def debug = false
+	
     static transactional = true
 
 	static appCreated = 'ncs-etl'
@@ -595,6 +596,7 @@ class ContactImportService {
 			}
 			
 			// any matches?  first match gets returned
+			if (debug) { println "Searching for existing tracked item in list::trackedItemInstanceList::${trackedItemInstanceList}..."}
 			trackedItemInstanceList.each {
 				if ( ! trackedItemInstance ) {
 					trackedItemInstance = it
@@ -646,11 +648,20 @@ class ContactImportService {
 				}
 			}
 			
-			if ( ! trackedItemInstance ) {
-				// create a batch
+			if ( ! trackedItemInstance && batchInstance?.id ) {
+				// create a tracked item
+				if (debug) {
+					println "batch.id::${batchInstance?.id}::batch::${batchInstance}::instrumentDate::${batchInstance?.instrumentDate}"
+				}
 				trackedItemInstance = new TrackedItem(person:personInstance, dwellingUnit:dwellingUnitInstance, batch: batchInstance)
+				if (debug) {
+					println "Attempting to save tracked item::trackedItemInstance::${trackedItemInstance} for person::${personInstance}"
+				}
 				if ( ! trackedItemInstance.save(flush:true) ) {
 					println "Failed to create tracked item."
+				}
+				if (debug) {
+					println "Tracked item saved! =)"
 				}
 			}
 
@@ -939,6 +950,9 @@ class ContactImportService {
 							// Incoming (default)
 							def batchDirectionInstance = BatchDirection.read(contactImportInstance.batchDirectionId ?: 2)
 							
+							if (debug) {
+								println "Creating tracked item | person::${personInstance} | dwellingUnit::${dwellingUnitInstance} | instrument::${instrumentInstance} | instrumentFormat::${instrumentFormatInstance} | batchDirection::${batchDirectionInstance} | instrumentDate::${instrumentDate}"
+							}
 							contactImportLinkInstance.trackedItemId = makeTrackedItem(personInstance, 
 								dwellingUnitInstance, instrumentInstance, instrumentFormatInstance, 
 								batchDirectionInstance, instrumentDate)

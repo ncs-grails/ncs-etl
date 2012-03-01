@@ -1,5 +1,6 @@
 import edu.umn.ncs.staging.ContactImport
 import edu.umn.ncs.staging.ContactImportZp4
+import edu.umn.ncs.StreetAddress
 
 class BootStrap {
 
@@ -12,7 +13,7 @@ class BootStrap {
             }.join(' ')
         }
 		
-		// add cleanUp to StreetAddress
+		// add cleanUp to ContactImport
 		// this depends on the address-lookup-zpfour function
 		ContactImport.metaClass.standardize = {->
 			ContactImportZp4 contactImportZp4Instance = null
@@ -42,11 +43,24 @@ class BootStrap {
 				}
 			}
 			return contactImportZp4Instance
-			
-			def env = System.getenv()
-			println "\nBrowse to https://${env['USERNAME']}.healthstudies.umn.edu:8443/ncs-etl/\n"
 		}
 
+		// add cleanUp to StreetAddress
+		// this depends on the address-lookup-zpfour function
+		StreetAddress.metaClass.standardize = {->
+			if (delegate.address) {
+				Integer z = 0
+				// initialize the return variable
+				if (delegate.zipCode) { z = delegate.zipCode }
+				def a1 = new com.semaphorecorp.zp4.StreetAddress(address: delegate.address,
+						city: delegate.city,
+						state: delegate.state,
+						zipCode: z )
+				return a1.lookup()
+			} else {
+				return null
+			}
+		}
     }
     def destroy = {
     }

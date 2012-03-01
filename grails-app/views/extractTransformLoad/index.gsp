@@ -49,12 +49,21 @@
                 	<span id="importData-success" style="display:none;"><img alt="Success." src="${resource(dir:'images',file:'success.png')}" /></span>
                 	<div id="importData-processing" style="display:none;"><img alt="Processing..." src="${resource(dir:'images',file:'ajax-loader.gif')}" /></div>
                 </div>
+
                 <div class="big maroonRoundRect" style="text-align: center;">
                 	<g:remoteLink controller="extractTransformLoad" action="repairDupPreferredOrder" 
                 		onLoading="start('cleanOrder');" onSuccess="success('cleanOrder');" onFailure="fail('cleanOrder');">Clean Up Invalid Ordering</g:remoteLink>
                 	<span id="cleanOrder-fail" style="display:none;"><img alt="Failed." src="${resource(dir:'images',file:'fail.png')}" /></span>
                 	<span id="cleanOrder-success" style="display:none;"><img alt="Success." src="${resource(dir:'images',file:'success.png')}" /></span>
                 	<div id="cleanOrder-processing" style="display:none;"><img alt="Processing..." src="${resource(dir:'images',file:'ajax-loader.gif')}" /></div>
+                </div>
+
+                <div class="big maroonRoundRect" style="text-align: center;">
+                	<g:remoteLink controller="extractTransformLoad" action="cleanUpDirtyAddresses" 
+                		onLoading="start('cleanDirty');" onSuccess="success('cleanDirty');" onFailure="fail('cleanDirty');">Clean Up Dirty (Non-Standardized) Addresses</g:remoteLink>
+                	<span id="cleanDirty-fail" style="display:none;"><img alt="Failed." src="${resource(dir:'images',file:'fail.png')}" /></span>
+                	<span id="cleanDirty-success" style="display:none;"><img alt="Success." src="${resource(dir:'images',file:'success.png')}" /></span>
+                	<div id="cleanDirty-processing" style="display:none;"><img alt="Processing..." src="${resource(dir:'images',file:'ajax-loader.gif')}" /></div>
                 </div>
             </div>
         </div>

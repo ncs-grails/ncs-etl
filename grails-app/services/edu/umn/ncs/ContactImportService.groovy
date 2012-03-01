@@ -71,7 +71,7 @@ class ContactImportService {
 		return emailInstanceId
 	}
 	
-	private def makeStreetAddress(addressInstance) {
+	private def makeStreetAddress(addressInstance, standardized) {
 		def streetAddressId = null
 		
 		def address = addressInstance.address1
@@ -179,7 +179,7 @@ class ContactImportService {
 					def streetAddressInstance = new StreetAddress(address:address,
 						address2:addressInstance.address2, city:addressInstance.city, 
 						state: addressInstance.state, zipcode: zipCode, zip4: zip4,
-						country: us, standardized: true, userCreated: 'norc',
+						country: us, standardized: standardized, userCreated: 'norc',
 						appCreated: appCreated)
 
 					if ( ! streetAddressInstance.save(flush:true) ) {
@@ -790,10 +790,10 @@ class ContactImportService {
 							def contactImportZp4 = ContactImportZp4.findByContactImport(contactImportInstance)
 							if (contactImportZp4?.updated) {
 								// We have a standardized address to work with
-								contactImportLinkInstance.addressId = makeStreetAddress(contactImportZp4)
+								contactImportLinkInstance.addressId = makeStreetAddress(contactImportZp4, true)
 							} else {
 								// This is a "dirty" address
-								contactImportLinkInstance.addressId = makeStreetAddress(contactImportInstance)
+								contactImportLinkInstance.addressId = makeStreetAddress(contactImportInstance, false)
 							}
 						}
 									
@@ -1059,6 +1059,58 @@ class ContactImportService {
 		println "done standardizing contact import addresses."
 	}
 
+	def cleanUpDirtyAddresses = {
+		// Get list of dirty street addresses
+		def dirtyStreetAddresses = StreetAddress.findAllByStandardized(false)
+
+		log.debug "Found ${dirtyStreetAddresses.size()} dirty street addresses."
+		dirtyStreetAddresses.each{ sa ->
+				log.debug "Need to process: ${sa}."
+		}
+		def cleanCount = 0
+
+		// Processs them in parallel to speed it up...
+		//GParsPool.withPool {
+		//	dirtyStreetAddresses.eachParallel{ sa ->
+		//		StreetAddress.withTransaction{
+		dirtyStreetAddresses.each{ sa ->
+					// clean address
+					def streetAddressInstance = StreetAddress.get(sa.id)
+					log.debug "Standardizing ${streetAddressInstance}..."
+					def cleanedAddressResult = streetAddressInstance.standardize()
+					log.debug "Processing ${streetAddressInstance}..."
+
+					// Check for a certified result
+					if (cleanedAddressResult.certified == 'C') {
+						// convert the result to a semaphore street address
+						def cleanedAddressInstance = cleanedAddressResult.toStreetAddress()
+
+						// Save the street address values to our streetAddressInstance
+						streetAddressInstance.address = cleanedAddressInstance.address 
+						streetAddressInstance.city = cleanedAddressInstance.city 
+						streetAddressInstance.state = cleanedAddressInstance.state 
+						streetAddressInstance.zipCode = cleanedAddressInstance.zipCode 
+						streetAddressInstance.zip4 = cleanedAddressInstance.zip4 
+						streetAddressInstance.standardized = true
+						
+						// Save the changes
+						log.debug "Saving ${streetAddressInstance}..."
+						if (! streetAddressInstance.save(flush:true)) {
+							log.error "Error saving streetAddressInstance after standardizing it!"
+							log.error streetAddressInstance.errors
+						} else {
+							cleanCount++
+							log.info "Cleaned Street Address ID: ${streetAddressInstance.id}"
+						}
+					} else {
+						log.debug "Unable to clean ${streetAddressInstance}"
+					}
+		//		}
+		//	}
+		}
+
+		log.info "Cleaned ${cleanCount} street addresses."
+	}
 
 	def cleanUpPreferredOrder = {
 		// Clean up addresses

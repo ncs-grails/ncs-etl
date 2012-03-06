@@ -30,15 +30,15 @@ grails.project.dependency.resolution = {
 		// 	excludes 'xml-apis', 'xmlParserAPIs'
 		// }
 
-        // runtime 'mysql:mysql-connector-java:5.1.5'
+        runtime 'mysql:mysql-connector-java:5.1.18'
 		build 'org.codehaus.gpars:gpars:0.11'
     }
     plugins {
 		compile ":hibernate:$grailsVersion"
 		compile ":tomcat:$grailsVersion"
 
-		compile ":spring-security-core:1.2.7.2"
-		compile ":spring-security-ldap:1.0.5.1"
+		compile ":spring-security-core:1.2.7.3"
+		compile ":spring-security-ldap:1.0.6"
 		compile ":spring-security-shibboleth-native-sp:1.0.3"
 
 		compile ":address-lookup-zpfour:0.1.2"

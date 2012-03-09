@@ -246,10 +246,68 @@ class ContactImportService {
 				String month = ''
 				String day = ''
 
-				year = components[0]
-				month = components[1]
-				day = components[2]
-
+				// Determine if a year is present
+				if (birthDate ==~ /(\d{4})-(\d{1,2})?-(\d{1,2})?/) {
+					//println "found year in birthDate::${birthDate}"
+					try {
+						year = components[0]
+					} catch (Exception ex) {
+						println "Could not get year from birthDate::${birthDate}"
+					}
+				}
+				// Determine if a month is present
+                                if (birthDate ==~ /(\d{4})?-(\d{1,2})-(\d{1,2})?/) {
+                                        //println "found month in birthDate::${birthDate}"
+                                        if (year == '') {
+						try {
+							month = components[0]
+						} catch (Exception ex) {
+							println "Could not get month from birthDate::${birthDate}"
+						}
+					} else {
+						try {
+                                                        month = components[1]
+                                                } catch (Exception ex) {
+                                                        println "Has Year...Could not get month from birthDate::${birthDate}"
+                                                }
+					}
+                                }
+				// Determine if a day is present
+                                if (birthDate ==~ /(\d{4})?-(\d{1,2})?-(\d{1,2})/) {
+                                        //println "found day in birthDate::${birthDate}"
+                                        if (year == '' && month == '') {
+						try {
+                                                        day = components[0]
+                                                } catch (Exception ex) {
+                                                        println "Could not get day from birthDate::${birthDate}"
+                                                }
+                                        } else {
+						if (year == '' || month == '') {
+                                                	try {
+                                                        	day = components[1]
+                                                	} catch (Exception ex) {
+                                                        	println "Has Year OR Month...Could not get day from birthDate::${birthDate}"
+                                                	}
+						} else {
+							try {
+                                                                day = components[2]
+                                                        } catch (Exception ex) {
+                                                                println "Has Year AND Month...Could not get day from birthDate::${birthDate}"
+                                                        }
+						}
+                                        }
+                                }
+				/*
+				if (year != '' && (month == '' || day == '' )) {
+					println "found year ${year} in partial birthDate::${birthDate}"
+				}
+				if (month != '' && (year == '' || day == '' )) {
+                                        println "found month ${month} in partial birthDate::${birthDate}"
+                                }
+				if (day != '' && (year == '' || month == '' )) {
+                                        println "found day ${day} in partial birthDate::${birthDate}"
+                                }
+				*/
 				Integer intDay = 15
 				Integer intMonth = 6
 				Integer intYear = 0

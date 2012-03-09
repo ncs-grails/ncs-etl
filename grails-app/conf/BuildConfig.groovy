@@ -45,9 +45,9 @@ grails.project.dependency.resolution = {
 		compile ":audit-logging:0.5.4"
 		compile ":jquery:1.7.1"
 		compile ":ncs-norc-link:0.4"
-		compile ":ncs-people:0.8"
+		compile ":ncs-people:0.9"
 		compile ":ncs-recruitment:1.0"
-		compile ":ncs-tracking:3.2.2"
+		compile ":ncs-tracking:3.2.5"
 		compile ":ncs-web-template:0.2"
 		compile ":quartz:0.4.2"
 

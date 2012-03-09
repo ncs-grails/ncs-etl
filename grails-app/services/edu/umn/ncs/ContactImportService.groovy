@@ -85,12 +85,12 @@ class ContactImportService {
 		try {
 			zipCode = Integer.parseInt(addressInstance?.zipcode)
 		} catch (Exception ex) {
-			println "Invalid Zipcode: ${addressInstance?.zipcode}"
+			log.warn "Invalid Zipcode: ${addressInstance?.zipcode}"
 		}
 		try {
 			zip4 = Integer.parseInt(addressInstance?.zip4)
 		} catch (Exception ex) {
-			println "Invalid Zipcode: ${addressInstance?.zipcode}"
+			log.warn "Invalid Zip4: ${addressInstance?.zip4}"
 		}
 
 		StreetAddress.withTransaction{
@@ -169,25 +169,27 @@ class ContactImportService {
 				def className = addressInstance.class.toString()
 
 				// We make one?
-				println "Could not find StreetAddress for ${className}: ${addressInstance.id}"
-				println "\t${address}"
-				println "\t${addressInstance.city}, ${addressInstance.state} ${zipCode}-${zip4}"
+				log.info "Could not find StreetAddress for ${className}: ${addressInstance.id}"
+				log.info "\t${address}"
+				log.info "\t${addressInstance.city}, ${addressInstance.state} ${zipCode}-${zip4}"
 				
 				
 				if (className == "class edu.umn.ncs.staging.ContactImportZp4") {
-					println "Creating new address..."
+					log.info "Creating new address from ZP4..."
 					def streetAddressInstance = new StreetAddress(address:address,
 						address2:addressInstance.address2, city:addressInstance.city, 
-						state: addressInstance.state, zipcode: zipCode, zip4: zip4,
+						state: addressInstance.state, zipCode: zipCode, zip4: zip4,
 						country: us, standardized: standardized, userCreated: 'norc',
 						appCreated: appCreated)
 
 					if ( ! streetAddressInstance.save(flush:true) ) {
-						println "Failed to save new Address!"
+						log.warn "Failed to save new Address!"
 						throw FailedToSaveStreetAddressException
 					} else {
 						streetAddressId = streetAddressInstance.id
 					}
+				} else {
+					log.warn "Not creating a new StreetAddress because it wasn't cleaned by ZP4"
 				}
 			}
 			
@@ -227,25 +229,78 @@ class ContactImportService {
 
 		def dateFormat = "yyyy-MM-dd"
 		Date dob = null
+		def birthDateDayKnown = false
+		def birthDateMonthKnown = false
+		def birthDateYearKnown = false
+		def newScore = 0
 
 		if (contactImportInstance.birthDate && contactImportInstance.birthDate != '--') {
-			try {
-				dob = Date.parse(dateFormat, contactImportInstance.birthDate)
-			} catch (Exception ex) {
-				println "unable to parse birthdate: ${contactImportInstance.birthDate}"
+			def birthDate = contactImportInstance.birthDate
+
+			def components = birthDate.split('-')
+			def componentCount = components.size()
+			if (componentCount <= 3 && componentCount > 0) {
+				
+				
+				String year = ''
+				String month = ''
+				String day = ''
+
+				year = components[0]
+				month = components[1]
+				day = components[2]
+
+				Integer intDay = 15
+				Integer intMonth = 6
+				Integer intYear = 0
+
+				if (year.length() > 0) {
+					intYear = Integer.parseInt(year)
+					birthDateYearKnown = true
+					newScore += 100
+				}
+				if (month.length() > 0) {
+					intMonth = Integer.parseInt(month)
+					birthDateMonthKnown = true
+					newScore += 10
+				}
+				if (day.length() > 0) {
+					intDay = Integer.parseInt(day)
+					birthDateDayKnown = true
+					newScore += 1
+				}
+				def stringDate = "${intYear}-${intMonth}-${intDay}"
+				try {
+					dob = Date.parse(dateFormat, stringDate)
+				} catch (Exception ex) {
+					log.warn "unable to parse birthdate: ${stringDate}"
+				}
+			} else {
+				log.warn "invalid date format: ${birthDate}, only ${componentCount} parts."
 			}
 		}
 
+		// If the dob was found and parsed ... and it's different than the person's DOB...
 		if (dob && personInstance.birthDate != dob) {
-			Person.withTransaction{
-				// re-load person with write access
-				personInstance = Person.get(personInstance.id)
-				println "Updating DOB for ${personInstance} to '${dob}'..."
-				personInstance.birthDate = dob
-				if ( ! personInstance.save(flush:true) ) {
-					println "ERROR Saving Birthdate: ${dob} for person: ${personInstance}"
-					personInstance.errors.each{
-						println "\t${it}"
+			def oldScore = 0
+
+			if (personInstance.birthDateDayKnown) { oldScore += 100 }
+			if (personInstance.birthDateMonthKnown) { oldScore += 10 }
+			if (personInstance.birthDateYearKnown) { oldScore += 1 }
+
+			// If the new one is more exact than the old one...
+			if  ( newScore >= oldScore ) {
+
+				Person.withTransaction{
+					// re-load person with write access
+					personInstance = Person.get(personInstance.id)
+					println "Updating DOB for ${personInstance} from '${personInstance.birthDate}' to '${dob}'..."
+					personInstance.birthDate = dob
+					if ( ! personInstance.save(flush:true) ) {
+						println "ERROR Saving Birthdate: ${dob} for person: ${personInstance}"
+						personInstance.errors.each{
+							println "\t${it}"
+						}
 					}
 				}
 			}
@@ -633,7 +688,7 @@ class ContactImportService {
 			if (! batchInstance ) {
 				println "Creating a new Batch..."
 				// create a batch
-				batchInstance = new Batch(instrumentDate:instrumentDate,
+				batchInstance = new Batch(dateCreated:instrumentDate, instrumentDate:instrumentDate,
 					trackingDocumentSent: false, format: instrumentFormatInstance,
 					direction: batchDirectionInstance, batchRunByWhat:'ncs-etl',
 					batchRunBy: 'norc')

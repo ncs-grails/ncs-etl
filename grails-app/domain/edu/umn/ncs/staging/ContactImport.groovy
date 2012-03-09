@@ -2,8 +2,11 @@ package edu.umn.ncs.staging
 
 class ContactImport {
 
+	/** Used to link to external person IDs */
 	String sourcePersonKey
+	Integer sourcePersonId
 	String sourceDwellingUnitKey
+	Integer sourceDwellingUnitId
 	String sourceKeyId
 	String sourceName
 	Date sourceDate = new Date()

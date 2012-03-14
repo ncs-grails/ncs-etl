@@ -458,7 +458,7 @@ class ContactImportLinkService {
 						maxResults(1)
 					}
 				} else if (dwellingUnitInstance) {
-					// if there is no person, search be dwelling unit
+					// if there is no person, search by dwelling unit
 					trackedItemInstance = TrackedItem.createCriteria().get{
 						and {
 							batch { idEq(batchInstance.id) }

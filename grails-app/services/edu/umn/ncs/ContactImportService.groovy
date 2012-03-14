@@ -402,9 +402,14 @@ class ContactImportService {
 			def suffix = contactImportInstance.suffix?.toLowerCase()?.capitalize()
 			
 			log.trace "Looking for Person: ${lastName}, ${firstName}"
-			
+		
+			// Search for a person by Person ID
+			if (contactImportLinkInstance.personId) {				
+				// Save the person instance to the local version
+				personInstance = Person.read(contactImportLinkInstance.personId.toLong()) 				
+			}
 			// search for a person by SUID
-			if (contactImportLinkInstance.norcSuId) {
+			if (!personInstance && contactImportLinkInstance.norcSuId) {
 				// Look them up by NORC ID
 				norcSuId = contactImportLinkInstance.norcSuId
 				def norcPersonLink = PersonLink.findByNorcSuId(norcSuId)
@@ -863,7 +868,15 @@ class ContactImportService {
 					}
 					
 					if (contactImportLinkInstance) {
-						
+						// Person
+						if (contactImportInstance.sourcePersonId &&
+                                                                ! contactImportLinkInstance.personId) {
+							if (debug) {
+								println "Person ID exists in contact import. Assigning to contact import link::${contactImportInstance.sourcePersonId}"
+							}
+							contactImportLinkInstance.personId = contactImportInstance.sourcePersonId
+                                                }
+	
 						// Primary Phone Number...
 						if (contactImportInstance.primaryPhone && 
 								! contactImportLinkInstance.primaryPhoneId) {
@@ -1237,18 +1250,23 @@ class ContactImportService {
 
 		multiContactResults.each{ result  ->
 			def personInstance = Person.get(result[1].id)
-			def recordCount = result[0]
+			def recordCount = personInstance.streetAddresses.size()
+			def duplicatePreferredOrder = result[2]
 			def sortOrder = recordCount - 1
 
-			println "Person: ${personInstance} has ${recordCount} addresses with the same order."
+			println "Person: ${personInstance} has ${result[0]} addresses with the same order."
 
 			personInstance.streetAddresses.sort{ it.dateCreated }.each{ personAddressInstance ->
+				if (debug) {
+					println	"\tSetting preferred order for address ${personAddressInstance.streetAddress.id}:${personAddressInstance.streetAddress.address} to ${sortOrder}"
+				}
+				// Update preferred order of all addresses for this person
 				personAddressInstance.preferredOrder = sortOrder
 				if ( !  personAddressInstance.save() ) {
 					println "ERROR Trying to update Sort Order for ${personInstance}:"
 					println "\t${sortOrder}\t${personAddressInstance.dateCreated}\t${personAddressInstance.streetAddress.address}"
 				}
-				sortOrder--	
+				sortOrder--
 			}
 		}
 

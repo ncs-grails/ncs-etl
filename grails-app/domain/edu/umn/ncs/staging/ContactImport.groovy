@@ -84,6 +84,7 @@ class ContactImport {
 		birthDate(nullable:true)
 		sourceKeyId(nullable:true)
 		sourcePersonKey(nullable:true)
+		sourcePersonId(nullable:true)
 		sourceDwellingUnitKey(nullable:true)
 		sourceName(nullable:true)
 		sourceDate(nullable:true)

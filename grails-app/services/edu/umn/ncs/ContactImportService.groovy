@@ -1251,7 +1251,6 @@ class ContactImportService {
 		multiContactResults.each{ result  ->
 			def personInstance = Person.get(result[1].id)
 			def recordCount = personInstance.streetAddresses.size()
-			def duplicatePreferredOrder = result[2]
 			def sortOrder = recordCount - 1
 
 			println "Person: ${personInstance} has ${result[0]} addresses with the same order."
@@ -1281,10 +1280,10 @@ class ContactImportService {
 
 		multiContactResults.each{ result  ->
 			def personInstance = Person.get(result[1].id)
-			def recordCount = result[0]
+			def recordCount = personInstance.phoneNumbers.size()
 			def sortOrder = recordCount - 1
 
-			println "Person: ${personInstance} has ${recordCount} phones with the same order."
+			println "Person: ${personInstance} has ${result[0]} phones with the same order."
 
 			personInstance.phoneNumbers.sort{ it.dateCreated }.each{ personPhoneInstance ->
 				personPhoneInstance.preferredOrder = sortOrder

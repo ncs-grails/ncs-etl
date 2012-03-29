@@ -234,7 +234,7 @@ class ContactImportService {
 		def birthDateYearKnown = false
 		def newScore = 0
 
-		if (contactImportInstance.birthDate && contactImportInstance.birthDate != '--') {
+		if (personInstance && contactImportInstance.birthDate && contactImportInstance.birthDate != '--') {
 			def birthDate = contactImportInstance.birthDate
 
 			def components = birthDate.split('-')
@@ -339,7 +339,7 @@ class ContactImportService {
 		}
 
 		// If the dob was found and parsed ... and it's different than the person's DOB...
-		if (dob && personInstance.birthDate != dob) {
+		if (dob && personInstance?.birthDate != dob) {
 			def oldScore = 0
 
 			if (personInstance.birthDateDayKnown) { oldScore += 100 }
@@ -1019,7 +1019,9 @@ class ContactImportService {
 						def cellPhoneType = PhoneType.read(1)
 						
 						def personInstance = Person.read(contactImportLinkInstance.personId)
-						
+						if (!personInstance) {						
+							log.trace "No UMN person fould with id ${contactImportLinkInstance.personId}"
+						}
 						// primaryPhone
 						if (personInstance && contactImportLinkInstance.primaryPhoneId) {
 							makePersonPhone(personInstance, 

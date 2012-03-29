@@ -13,7 +13,6 @@ grails.project.dependency.resolution = {
         grailsPlugins()
         grailsHome()
         grailsCentral()
-        //grailsRepo "http://svn.cccs.umn.edu/ncs-grails-plugins"
 
         // uncomment the below to enable remote dependency resolution
         // from public Maven repositories
@@ -44,10 +43,10 @@ grails.project.dependency.resolution = {
 		compile ":address-lookup-zpfour:0.1.2"
 		compile ":audit-logging:0.5.4"
 		compile ":jquery:1.7.1"
-		compile ":ncs-norc-link:0.4"
-		compile ":ncs-people:0.9"
-		compile ":ncs-recruitment:1.0"
-		compile ":ncs-tracking:3.2.5"
+		compile ":ncs-norc-link:0.5"
+		compile ":ncs-people:1.0"
+		compile ":ncs-recruitment:1.1"
+		compile ":ncs-tracking:3.2.6"
 		compile ":ncs-web-template:0.2"
 		compile ":quartz:0.4.2"
 

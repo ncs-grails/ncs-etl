@@ -1,8 +1,0 @@
-Starting Process at Tue Jan 31 19:16:06 CST 2012
-Updating Config.groovy
-Moving DataSource.groovy to /home/AD/ajz/development/grails/ncs/config/development/ncs-etl-config.groovy
-Adding security plugin dependencies to grails-app/conf/BuildConfig.groovy
-Removing plugins.umn-acegi from application.properties
-./grails-app/controllers/edu/umn/ncs/ExtractTransformLoadController.groovy	Updating	Annotation	grails.plugins.springsecurity.Secured
-./grails-app/services/edu/umn/ncs/ContactImportService.groovy	Updating	Definition	def springSecurityService
-./grails-app/services/edu/umn/ncs/ContactImportService.groovy	Updating	DefinitionuthenticateService.principal

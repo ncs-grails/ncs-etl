@@ -7,7 +7,7 @@ import edu.umn.ncs.staging.ContactImportLink
 import edu.umn.ncs.staging.ContactImportZp4
 
 class ContactImportService {
-	def debug = false
+	def debug = true
 	
     static transactional = true
 
@@ -1066,8 +1066,24 @@ class ContactImportService {
 								StreetAddress.read(contactImportLinkInstance.addressId),
 								sourceNorc, contactImportInstance.sourceDate ?: now)
 						}
-
 						
+						// Check for existing tracked item id
+						if ( personInstance && contactImportInstance.sourceTrackedItemId ) {
+							// Try to find tracked item
+							def existingTrackedItemInstance = TrackedItem.get(contactImportInstance.sourceTrackedItemId)
+							if (existingTrackedItemInstance) {								
+								if (debug) {
+                                                                	println "Linking tracked item::${contactImportInstance.sourceTrackedItemId} to person::${personInstance}"
+                                                        	}
+
+								// Assign tracked item to person
+								existingTrackedItemInstance.person = personInstance
+								if (existingTrackedItemInstance.save(flush:true)) {
+									contactImportLinkInstance.trackedItemId = existingTrackedItemInstance.id
+								}
+							}
+						}
+
 						// Instruments
 						if ( ( personInstance || dwellingUnitInstance) && contactImportInstance.instrumentId && ! contactImportLinkInstance.trackedItemId) {
 							def instrumentInstance = Instrument.read(contactImportInstance.instrumentId)

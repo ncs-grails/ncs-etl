@@ -7,6 +7,7 @@ class ContactImport {
 	Integer sourcePersonId
 	String sourceDwellingUnitKey
 	Integer sourceDwellingUnitId
+	Integer sourceTrackedItemId
 	String sourceKeyId
 	String sourceName
 	Date sourceDate = new Date()
@@ -85,6 +86,7 @@ class ContactImport {
 		sourceKeyId(nullable:true)
 		sourcePersonKey(nullable:true)
 		sourcePersonId(nullable:true)
+		sourceTrackedItemId(nullable:true)
 		sourceDwellingUnitKey(nullable:true)
 		sourceName(nullable:true)
 		sourceDate(nullable:true)

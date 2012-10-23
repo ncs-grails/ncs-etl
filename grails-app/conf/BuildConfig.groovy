@@ -30,6 +30,7 @@ grails.project.dependency.resolution = {
 		// }
 
         runtime 'mysql:mysql-connector-java:5.1.18'
+		//runtime 'poi-ooxml:poi-ooxml:3.7'
 		build 'org.codehaus.gpars:gpars:0.11'
     }
     plugins {
@@ -49,7 +50,8 @@ grails.project.dependency.resolution = {
 		compile ":ncs-tracking:3.2.6"
 		compile ":ncs-web-template:0.2"
 		compile ":quartz:0.4.2"
-
+		compile ":csv:0.3.1"
+		
 		provided ":spring-security-mock:1.0.1"
 
 		test ":code-coverage:1.2.5"
